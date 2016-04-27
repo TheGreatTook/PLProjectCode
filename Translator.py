@@ -105,6 +105,15 @@ class Translator(ast.NodeVisitor):
     def visit_Div(self, node):
         return '/'
 
+    def vist__BoolOp(self, node):
+        return self.visit(node.left) + " " + self.visit(node.op) + " " + self.visit(node.right)
+
+    def visit_And(self, node):
+        return "and"
+
+    def visit_Or(self, node):
+        return "or"
+
     #Statement Nodes
     def visit_Assign(self, node):
         variants = []
