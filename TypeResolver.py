@@ -140,6 +140,9 @@ class TypeResolver(ast.NodeVisitor):
         else:
             return 'int'
 
+    def visit_BoolOp(self, node):
+        return 'bool'
+
     #Statement Nodes
     def visit_Assign(self, node):
         names = []

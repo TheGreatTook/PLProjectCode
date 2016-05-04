@@ -104,7 +104,7 @@ class Translator(ast.NodeVisitor):
 
     def visit_Div(self, node):
         return '/'
-
+    #boolean stuff
     def vist__BoolOp(self, node):
         return self.visit(node.left) + " " + self.visit(node.op) + " " + self.visit(node.right)
 
@@ -113,6 +113,28 @@ class Translator(ast.NodeVisitor):
 
     def visit_Or(self, node):
         return "or"
+
+    #compare stuff
+    def visit_Compare(self, node):
+         return self.visit(node.left) + " " + self.visit(node.op) + " " + self.visit(node.right)
+
+    def vist_Eq(self, node):
+        return '='
+
+    def vist_NotEq(self, node):
+        return '!='        
+
+    def vist_Lt(self, node):
+        return '<'
+
+    def vist_LtE(self, node):
+        return '<='
+
+    def vist_Gt(self, node):
+        return '>'
+
+    def vist_GtE(self, node):
+        return '>='
 
     #Statement Nodes
     def visit_Assign(self, node):
