@@ -1,11 +1,17 @@
 import ast
 from TypeResolver import *
 
+#The Translator class is responsible for translating the pyton
+#source code into valid C++ code.
 class Translator(ast.NodeVisitor):
+    #Class constructor
     def __init__(self):
         self.typeResolver = TypeResolver()
         self.f = open('output.cpp', 'w')
 
+    #Translates a python source AST into C++ code.
+    #Arguments:
+    #   tree: The python source AST.
     def translate(self, tree):
         self.typeResolver.initialize(tree)
         self.typeResolver.dump()
@@ -20,7 +26,13 @@ class Translator(ast.NodeVisitor):
         self.f.write('  return 0;\n')
         self.f.write('}')
 
-    #Helper Methods
+    #Insertes type casts for variables of type Variant. This is necessary 
+    #because C++ requires the type of a variable to be know at compile time
+    #When it is referenced.
+    #Arguments:
+    #   expr: An expression with references to variables of type Variant.
+    #Returns:
+    #   A new expression with the proper type casts inserted.
     def insertTypeCasts(self, expr):
         for var in self.typeResolver.boundVariables.variables:
             primitiveType = self.typeResolver.boundVariables.apply(var)
@@ -78,18 +90,24 @@ class Translator(ast.NodeVisitor):
 
         return aStr
 
-    #Literal Nodes
+    #-----------------------
+    #-----Literal Nodes-----
+    #-----------------------
     def visit_Num(self, node):
         return str(node.n)
 
     def visit_Str(self, node):
         return 'string("' + str(node.s) + '")'
     
-    #Variable Node
+    #-----------------------
+    #-----Variable Node-----
+    #-----------------------
     def visit_Name(self, node):
         return str(node.id)
 
-    #Expression Nodes
+    #--------------------------
+    #-----Expression Nodes-----
+    #--------------------------
     def visit_BinOp(self, node):
         return self.visit(node.left) + " " + self.visit(node.op) + " " + self.visit(node.right)
 
@@ -136,7 +154,9 @@ class Translator(ast.NodeVisitor):
     def vist_GtE(self, node):
         return '>='
 
-    #Statement Nodes
+    #-------------------------
+    #-----Statement Nodes-----
+    #-------------------------
     def visit_Assign(self, node):
         variants = []
         primitives = []
