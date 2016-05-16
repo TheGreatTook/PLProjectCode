@@ -104,6 +104,7 @@ class Translator(ast.NodeVisitor):
 
     def visit_Div(self, node):
         return '/'
+
     #boolean stuff
     def vist__BoolOp(self, node):
         return self.visit(node.left) + " " + self.visit(node.op) + " " + self.visit(node.right)
@@ -135,6 +136,21 @@ class Translator(ast.NodeVisitor):
 
     def vist_GtE(self, node):
         return '>='
+
+    #Unary Nodes
+    #not including Invert because doing 2's complement math in Python seems like a waste of time
+
+    def visit_UnaryOp(self, node):
+        return self.visit(node.op) + self.visit(node.operand)
+
+    def visit_UAdd(self, node):
+        return '++'
+
+    def visit_uSub(self, node):
+        return '--'
+
+    def visit_Not(self, node):
+        return '!'
 
     #Statement Nodes
     def visit_Assign(self, node):
@@ -190,6 +206,12 @@ expr2= """
 a=1
 b=2
 a<b
+"""
+
+expr3= """
+a=!b
++b
+-a
 """
 
 tree = ast.parse(expr)
