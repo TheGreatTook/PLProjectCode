@@ -2,8 +2,25 @@
 #include <stdexcept>
 #include <string>
 #include <cstring>
+#include <sstream>
 
 using namespace std;
+
+namespace patch {
+  template <typename T> std::string to_string(const T& n) {
+    std::ostringstream stm;
+    stm << n;
+    return stm.str();
+  }
+
+  int stoi(string str) {
+    std::stringstream stm(str);
+    int n;
+    stm << str;
+    stm >> n;
+    return n;
+  }
+}
 
 class Variant {
 private:
@@ -128,14 +145,18 @@ public:
   }
 };
 
-template <typename T>
-inline void print(T const & val) {
-  cout << val << endl;
-}
+double pMod(double left, double right) {
+  double val = left / right;
+  string sVal = patch::to_string(val);
 
-template <typename T>
-inline T const & dynamicType(T const & num) {
-  return num;
+  for(int i = 0; i < sVal.length(); i++) {
+    if(sVal[i] == '.') {
+      sVal = sVal.substr(0, i);
+      break;
+    }
+  }
+
+  return (val - patch::stoi(sVal)) * right;
 }
 
 int main() {
@@ -149,14 +170,8 @@ int main() {
 
   cout << endl;
 
-  int intVal = 5;
-  print(intVal);
-  float floatVal = 5.5;
-  print(floatVal);
-
-  cout << endl;
-
-  cout << dynamicType(0) << endl;
+  cout << pMod(5.5, 4) << endl;
 
   return 0;
 }
+
