@@ -197,8 +197,15 @@ class TypeResolver(ast.NodeVisitor):
     #   node: The AST node.
     #Returns:
     #   The primitive type(bool) of the bool operation.
-    def visit_BoolOp(self, node):
+    def visit_BoolOp(self, node):  
         return 'bool'
+
+    def visit_NameConstant(self, node):
+        return 'bool'
+
+    def visit_Compare(self, node):
+        return 'bool'
+
 
     #-------------------------
     #-----Statement Nodes-----
