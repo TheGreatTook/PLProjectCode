@@ -122,6 +122,7 @@ class Translator(ast.NodeVisitor):
 
     def visit_Div(self, node):
         return '/'
+
     #boolean stuff
     def vist__BoolOp(self, node):
         return self.visit(node.left) + " " + self.visit(node.op) + " " + self.visit(node.right)
@@ -154,9 +155,28 @@ class Translator(ast.NodeVisitor):
     def vist_GtE(self, node):
         return '>='
 
+
+    #Unary Nodes
+    #not including Invert because doing 2's complement math in Python seems like a waste of time
+
+    def visit_UnaryOp(self, node):
+        return self.visit(node.op) + self.visit(node.operand)
+
+    def visit_UAdd(self, node):
+        return '++'
+
+    def visit_uSub(self, node):
+        return '--'
+
+    def visit_Not(self, node):
+        return '!'
+
+    #Statement Nodes
+
     #-------------------------
     #-----Statement Nodes-----
     #-------------------------
+
     def visit_Assign(self, node):
         variants = []
         primitives = []
@@ -206,11 +226,29 @@ print(a)
 f=c+e
 """
 
+<<<<<<< HEAD
 expr2= """
 print("hello world")
+=======
+# expr2= """
+# a=1
+# b=2
+# a<b
+# """
+
+expr3= """
+print(b)
+!b
++b
+-a
+>>>>>>> 366c44f591448ece0a55576a9b65a8af0dadf8a7
 """
 
-tree = ast.parse(expr)
+tree = ast.parse(expr3)
 print(ast.dump(tree))
 Translator().translate(tree)
+<<<<<<< HEAD
 #print(ast.dump(ast.parse(expr2)))
+=======
+print(ast.dump(ast.parse(expr3)))
+>>>>>>> 366c44f591448ece0a55576a9b65a8af0dadf8a7

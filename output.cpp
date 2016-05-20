@@ -7,9 +7,12 @@ int main() {
   a = b = 1 + 1.5 * 2;
   float c = (float&)a + (float&)b;
   string d = string("test");
+  cout << d << endl;
   int e;
   b = e = 3;
+  cout << (int&)b << endl;
   a = string("hello world");
+  cout << (string&)a << endl;
   float f = c + e;
   return 0;
 }
