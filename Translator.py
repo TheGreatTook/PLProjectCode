@@ -207,12 +207,10 @@ f=c+e
 """
 
 expr2= """
-a=1
-b=2
-a<b
+print("hello world")
 """
 
 tree = ast.parse(expr)
 print(ast.dump(tree))
 Translator().translate(tree)
-print(ast.dump(ast.parse(expr2)))
+#print(ast.dump(ast.parse(expr2)))
