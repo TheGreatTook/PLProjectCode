@@ -9,25 +9,8 @@ int main() {
   float c = (float&)a + (float&)b;
   string d = string("test");
   int e;
-  b = e = 3;
+  e = b = 3;
   a = string("hello world");
-  bool g = True;
-  bool h = (int&)b < c ;
-  bool i = True;
-  float k = pow(e,(int&)b);
-  bool j = g (string&)and i;
-  if(g and i)
-  {
-  return j;
-  } 
-  else 
-  { 
-  return i;
-  } 
   float f = c + e;
-  while (i)
-  {
-  return j;
-  } 
   return 0;
 }

@@ -1,3 +1,4 @@
+import sys
 import ast
 from TypeResolver import *
 
@@ -9,9 +10,7 @@ class Translator(ast.NodeVisitor):
 
     def __init__(self):
         self.typeResolver = TypeResolver()
-        self.f = open('output.cpp', 'w')
-        self.typeFloat = 0
-        self.typeInt = 0
+        self.c_file = open('output.cpp', 'w')
 
     #Translates a python source AST into C++ code.
     #Arguments:
@@ -20,16 +19,21 @@ class Translator(ast.NodeVisitor):
         self.typeResolver.initialize(tree)
         self.typeResolver.dump()
 
-        self.f.write('#include <iostream>\n')
-        self.f.write('#include <string>\n')
-        self.f.write('#include <math.h>\n')        
-        self.f.write('using namespace std;\n\n')
-        self.f.write('int main() {\n')
+        self.c_file.write('#include <iostream>\n')
+
+        self.c_file.write('#include <string>\n')
+
+        self.c_file.write('#include <math.h>\n')
+
+        self.c_file.write('using namespace std;\n\n')
+
+        self.c_file.write('int main() {\n')
 
         self.visit(tree)
 
-        self.f.write('  return 0;\n')
-        self.f.write('}')
+        self.c_file.write('  return 0;\n')
+
+        self.c_file.write('}')
 
     #Insertes type casts for variables of type Variant. This is necessary 
     #because C++ requires the type of a variable to be know at compile time
@@ -39,61 +43,69 @@ class Translator(ast.NodeVisitor):
     #Returns:
     #   A new expression with the proper type casts inserted.
     def insertTypeCasts(self, expr):
-        for var in self.typeResolver.boundVariables.variables:
-            primitiveType = self.typeResolver.boundVariables.apply(var)
-            if not(primitiveType == None) and self.typeResolver.resolveVariableType(var) == 'Variant':
-                expr = expr.replace(var, '(' + primitiveType + '&)' + var)
+        for var in self.typeResolver.variables:
+
+            primitiveType = var.boundType
+
+            if self.typeResolver.resolveVariableType(var.name) == 'Variant':
+
+                expr = expr.replace(var.name, '(' + primitiveType + '&)' + var.name)
         return expr
 
-    def serializeVars_Declaration(self, variants, primitives):
-        vStr = ''
-        vCount = 0
-        count = 0
-        for variant in variants:
-            count += 1
-            if not(self.typeResolver.boundVariables.contains(variant[0])):
-                vStr += variant[0]
-                vCount += 1
-            if count != len(variants):
-                vStr += ', '
+    #Serialzes assignment expressions into c++ code.
+    #Arguments:
+    #   variables: The variables.
+    #   value: The value.
+    def serializeAssignment(self, variables, value):
+        variantLine = ''
 
-        pStr = ''
-        pCount = 0
-        count = 0
-        for primitive in primitives:
-            count += 1
-            if not(self.typeResolver.boundVariables.contains(primitive[0])):
-                pStr += primitive[0]
-                pCount += 1
-            if count != len(primitives):
-                pStr += ', '
+        variantCount = 0
 
-        return ((vStr, vCount), (pStr, pCount))
 
-    def serializeVars_Assignment(self, variants, primitives):
-        vStr = ''
-        count = 0
-        for variant in variants:
-            count += 1
-            vStr += variant[0]
-            if count != len(variants):
-                vStr += ' = '
+        primitiveLine = ''
+        primitiveCount = 0
 
-        pStr = ''
-        count = 0
-        for primitive in primitives:
-            count += 1
-            pStr += primitive[0]
-            if count != len(primitives):
-                pStr += ' = '
+        assignmentLine = ''
 
-        aStr = ''
-        aStr = aStr + vStr
-        if vStr != '' and pStr != '':
-            aStr = aStr + ' = '
-        aStr = aStr + pStr
 
-        return aStr
+        for variable in variables:
+
+
+
+            if self.typeResolver.boundType(variable) == 'void':
+                variableType = self.typeResolver.resolveVariableType(variable)
+                if variableType == 'Variant':
+                    if variantCount == 0:
+                        variantLine += variableType + ' '  + variable
+                    else:
+                        variantLine += ', ' + variable
+
+                    variantCount += 1
+                else:
+                    if primitiveCount == 0:
+                        primitiveLine += variableType + ' ' + variable
+                    else:
+                        primitiveLine += ', ' + variable
+
+
+                    primitiveCount += 1
+            assignmentLine += variable + ' = '
+
+
+        if variantCount + primitiveCount == 1 and len(variables) == 1:
+            if variantCount == 1:
+                variantLine += ' = ' + value
+            else:
+                primitiveLine += ' = ' + value
+            assignmentLine = ''
+
+        if not(variantLine == ''):
+            self.c_file.write('  ' + variantLine + ';\n')
+        if not(primitiveLine == ''):
+            self.c_file.write('  ' + primitiveLine + ';\n')
+        if not(assignmentLine == ''):
+            self.c_file.write('  ' + assignmentLine + value + ';\n')
+
 
     #-----------------------
     #-----Literal Nodes-----
@@ -261,47 +273,31 @@ class Translator(ast.NodeVisitor):
     #-------------------------
 
     def visit_Assign(self, node):
-        variants = []
-        primitives = []
+        variables = []
         for target in node.targets:
-            name = self.visit(target)
-            t = self.typeResolver.resolveVariableType(name)
-            if t == 'Variant':
-                variants.append((name, t))
-            else:
-                primitives.append((name, t))
+            variables.append(self.visit(target))
+        
+        value = self.insertTypeCasts(self.visit(node.value))
+        self.serializeAssignment(variables, value)
 
-        value = self.visit(node.value)
-        primitiveType = self.typeResolver.resolveExpressionType(value)
-
-        value = self.insertTypeCasts(value)
-
-        if(self.typeInt == 1):
-            self.typeInt -= 1
-            primitiveType = 'int'
-        elif(self.typeFloat == 1):
-            self.typeFloat -= 1
-            primitiveType = 'float'
-        dStrs = self.serializeVars_Declaration(variants, primitives)
-        aStr = self.serializeVars_Assignment(variants, primitives)
-        if len(variants) + len(primitives) == 1:
-            if dStrs[0][1] != 0:
-                self.f.write('  ' + 'Variant' + ' ' + dStrs[0][0] + ' = ' + value + ';\n')
-            elif dStrs[1][1] != 0:
-                self.f.write('  ' + primitiveType + ' ' + dStrs[1][0] + ' = ' + value + ';\n')
-            else:
-                self.f.write('  ' + aStr + " = " + value + ';\n')
-        else:
-            if dStrs[0][1] != 0:
-                self.f.write('  ' + 'Variant' + ' ' + dStrs[0][0] + ';\n')
-            if dStrs[1][1] != 0:
-                self.f.write('  ' + primitiveType + ' ' + dStrs[1][0] + ';\n')
-            self.f.write('  ' + aStr + " = " + value + ';\n')
-
-        self.typeResolver.updateBoundVars(variants, primitives, primitiveType)
+        primitiveType = self.typeResolver.resolveExpressionType(node.value)
+        self.typeResolver.updateBoundTypes(variables, primitiveType)
 
     def visit_Print(self, node):
-        self.f.write('  cout << ' + self.insertTypeCasts(self.visit(node.values[0])) + ' << endl;\n')
+
+        self.c_file.write('  cout << ' + self.insertTypeCasts(self.visit(node.values[0])) + ' << endl;\n')
+
+argc = len(sys.argv) - 1
+argv = []
+for i in range(1, len(sys.argv)):
+    argv.append(sys.argv[i])
+
+testExpr = open(argv[0], 'r').read()
+print(testExpr)
+
+
+
+
 
 expr = """
 a=b=1+1.5*2
@@ -311,29 +307,23 @@ print(d)
 e=b=3
 print(b)
 a="hello world"
-g=True
-h=b<c
-i=True
 print(a)
-k=e**b
-j=g and i
-if (g and i):
-    return j
-else:
-    return i
 f=c+e
-while (i):
-    return j
-
 """
 
-
 expr2= """
-print("hello world")"""
+print("hello world")
+a=1
+b=2
+a<b
+"""
 
+expr3= """
+print(b)
+!b
++b
+-a
+"""
 
 tree = ast.parse(expr)
-print(ast.dump(tree))
-print(" ")
-#print(ast.dump(ast.parse(expr2)))
 Translator().translate(tree)

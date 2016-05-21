@@ -1,34 +1,11 @@
 import ast
 
-class VariableTypeEnvironment():
-    def __init__(self):
-        self.variables = []
-        self.types = []
-
-    def contains(self, var):
-        if var in self.variables:
-            return True
-        return False
-
-    def extend(self, var, t):
-        if not(var in self.variables):
-            self.variables.append(var)
-            self.types.append(t)
-
-    def update(self, var, t):
-        for i in range(0, len(self.variables)):
-            if self.variables[i] == var:
-                self.types[i] = t
-
-    def apply(self, var):
-        for i in range(0, len(self.variables)):
-            if self.variables[i] == var:
-                return self.types[i]
-
 class Variable():
     def __init__(self, name):
         self.name = name
         self.types = []
+        self.boundType = 'void'
+        self.ambiguous = False        
     
     def addType(self, t):
         if not(t in self.types):
@@ -59,7 +36,7 @@ class VariableCollection():
     def dump(self):
         print('---------------')
         for var in self.variables:
-            print(var.name, var.types)
+            print(var.name, var.types, var.boundType, var.ambiguous)
         print('---------------')
 
 #The TypeResolver class is responsible for resolving the list of possible types
@@ -69,9 +46,8 @@ class VariableCollection():
 class TypeResolver(ast.NodeVisitor):
     #Class Constructor
     def __init__(self):
-        self.expressionType = 'null'
-        self.variables = VariableCollection()
-        self.boundVariables = VariableTypeEnvironment()
+        self.variableCollection = VariableCollection()
+        self.variables = self.variableCollection.variables
 
     #Initiates the initial pass over the AST.
     #Arguments:
@@ -82,7 +58,7 @@ class TypeResolver(ast.NodeVisitor):
     #Dumps the list of variables and their corresponding 
     #binding types to standard output.
     def dump(self):
-        self.variables.dump()
+        self.variableCollection.dump()
 
     #Resolves the type of a given variable. Note variables with 
     #multiple binding will be considered variants while variables
@@ -92,48 +68,41 @@ class TypeResolver(ast.NodeVisitor):
     #Returns:
     #   The variable type.
     def resolveVariableType(self, name):
-        var = self.variables.find(name)
+        var = self.variableCollection.find(name)
         if len(var.types) > 1:
             return 'Variant'
         elif len(var.types) == 1:
             return var.types[0]
         else:
-            return 'unknow'
+            return 'void'
 
     #Resolves the type of a given python expression.
     #Arguments:
     #   expr: The python expression.
     #Returns:
     #   The python expression type.
-    def resolveExpressionType(self, expr):
-        if 'string(' in expr:
-            self.expressionType = 'string'
-        else:
-            self.visit(ast.parse(expr))
-        return self.expressionType
+    def resolveExpressionType(self, node):
+        return self.visit(node)
     
-    #Flagged for refactor.
-    def updateBoundVars(self, variants, primitives, primitiveType):
-        for variant in variants:
-            if not(self.boundVariables.contains(variant[0])):
-                self.boundVariables.extend(variant[0], primitiveType)
-            else:
-                self.boundVariables.update(variant[0], primitiveType)
+       #Updates the primitive type bound to variables.
+    #Arguments:
+    #   variables: The variables to update.
+    #   primitiveType: The primitiveType to bind.
 
-        for primitive in primitives:
-            if not(self.boundVariables.contains(primitive[0])):
-                self.boundVariables.extend(primitive[0], primitiveType)
-            else:
-                self.boundVariables.update(primitive[0], primitiveType)
+    def updateBoundTypes(self, variables, primitiveType):
+        for variable in variables:
+            self.variableCollection.find(variable).boundType = primitiveType
+
+    #Returns the type bound to the given variable.
+    #Arguments:
+    #   variable: The variable.
+    def boundType(self, variable):
+        return self.variableCollection.find(variable).boundType
     
     #-----------------------
     #-----Literal Nodes-----
     #-----------------------
-    #Visits a Num AST node and resolves it's primitive type.
-    #Arguments:
-    #   node: The AST node.
-    #Returns:
-    #   The primitive type(float or int) of the value.
+
     def visit_Num(self, node):
         value = str(node.n)
         for c in value:
@@ -141,50 +110,33 @@ class TypeResolver(ast.NodeVisitor):
                 return 'float'
         return 'int'
 
-    #Visits a Str AST node and resolves it's primitive type.
-    #Arguments:
-    #   node: The AST node.
-    #Returns:
-    #   The primitive type(string) of the value.
+ 
     def visit_Str(self, node):
         return 'string'
 
     #-----------------------
     #-----Variable Node-----
     #-----------------------
-    #Visits a Name AST node and adds the variable name to the collection of variables.
-    #Arguments:
-    #   node: The AST node.
-    #Returns:
+
     #   The Variable name.
     def visit_Name(self, node):
-        if not(self.variables.contains(node.id)):
-            self.variables.add(node.id)
+        if not(self.variableCollection.contains(node.id)):
+            self.variableCollection.add(node.id)
         return node.id
 
     #--------------------------
     #-----Expression Nodes-----
     #--------------------------
-    #Visits an Expr AST Node and stores its expression type.
-    #Arguments:
-    #   node: The AST node.
-    def visit_Expr(self, node):
-        self.expressionType = self.visit(node.value)
 
-    #Visits a BinOp AST Node and resolves it's primitive type.
-    #Arguments:
-    #   node: The AST node.
-    #Returns:
-    #   The primitive type(string, float or int) of the binary operation.
+
+
     def visit_BinOp(self, node):
         leftType = self.visit(node.left)
         rightType = self.visit(node.right)
-
-        if self.variables.contains(leftType):
-            leftType = self.boundVariables.apply(leftType)
-        if self.variables.contains(rightType):
-            rightType = self.boundVariables.apply(rightType)
-        
+        if self.variableCollection.contains(leftType):
+            leftType = self.resolveVariableType(leftType)
+        if self.variableCollection.contains(rightType):
+            rightType = self.resolveVariableType(rightType)        
         if leftType == 'string' or rightType == 'string':
             return 'string'
         elif leftType == 'float' or rightType == 'float':
@@ -192,11 +144,7 @@ class TypeResolver(ast.NodeVisitor):
         else:
             return 'int'
 
-    #Visits a BoolOp AST Node and resolves it's primitive type.
-    #Arguments:
-    #   node: The AST node.
-    #Returns:
-    #   The primitive type(bool) of the bool operation.
+
     def visit_BoolOp(self, node):  
         return 'bool'
 
@@ -218,8 +166,9 @@ class TypeResolver(ast.NodeVisitor):
         names = []
         for target in node.targets:
             names.append(self.visit(target))
-
-        varType = self.visit(node.value)
+            
+        primitiveType = self.visit(node.value)
 
         for name in names:
-            self.variables.extend(name, varType)
+
+            self.variableCollection.extend(name, primitiveType)
