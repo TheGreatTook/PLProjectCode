@@ -1,43 +1,5 @@
 import ast
-
-class Variable():
-    def __init__(self, name):
-        self.name = name
-        self.types = []
-        self.boundType = 'void'
-        self.ambiguous = False
-    
-    def addType(self, t):
-        if not(t in self.types):
-            self.types.append(t)
-
-class VariableCollection():
-    def __init__(self):
-        self.variables = []
-
-    def contains(self, name):
-        for var in self.variables:
-            if var.name == name:
-                return True
-        return False
-
-    def find(self, name):
-        for var in self.variables:
-            if var.name == name:
-                return var
-        return None
-
-    def add(self, name):
-        self.variables.append(Variable(name))
-
-    def extend(self, name, t):
-        self.find(name).addType(t)
-
-    def dump(self):
-        print('---------------')
-        for var in self.variables:
-            print(var.name, var.types, var.boundType, var.ambiguous)
-        print('---------------')
+from VariableCollection import *
 
 #The TypeResolver class is responsible for resolving the list of possible types
 #each variable in the python source can be bound to. TypeResolve achieves this by doing
@@ -46,6 +8,7 @@ class VariableCollection():
 class TypeResolver(ast.NodeVisitor):
     #Class Constructor
     def __init__(self):
+        self.builtIns = ['print']
         self.variableCollection = VariableCollection()
         self.variables = self.variableCollection.variables
 
@@ -115,7 +78,7 @@ class TypeResolver(ast.NodeVisitor):
     #-----Variable Node-----
     #-----------------------
     def visit_Name(self, node):
-        if not(self.variableCollection.contains(node.id)):
+        if not(self.variableCollection.contains(node.id)) and not(node.id in self.builtIns):
             self.variableCollection.add(node.id)
         return node.id
 
@@ -141,9 +104,6 @@ class TypeResolver(ast.NodeVisitor):
     def visit_BoolOp(self, node):
         return 'bool'
 
-    def visit_IfExp(self, node):
-        print("TEST")
-
     #-------------------------
     #-----Statement Nodes-----
     #-------------------------
@@ -156,3 +116,12 @@ class TypeResolver(ast.NodeVisitor):
 
         for name in names:
             self.variableCollection.extend(name, primitiveType)
+
+    #--------------------------
+    #---Function/Class Nodes---
+    #--------------------------
+    def visit_FunctionDef(self, node):
+        name = str(node.name)
+        print(node.args)
+        #print(node.body)
+        #print(node.decorator_list)
