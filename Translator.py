@@ -270,28 +270,16 @@ class Translator(ast.NodeVisitor):
 
 
     def visit_Print(self, node):
-        self.c_file.write('  cout << ' + self.insertTypeCasts(self.visit(node.values[0])) + ' << endl;\n')
-
-argc = len(sys.argv) - 1
-argv = []
-for i in range(1, len(sys.argv)):
-    argv.append(sys.argv[i])
-
-testExpr = open(argv[0], 'r').read()
-print(testExpr)
-
-
-    def visit_Print(self, node):
 
         self.c_file.write('  cout << ' + self.insertTypeCasts(self.visit(node.values[0])) + ' << endl;\n')
 
-argc = len(sys.argv) - 1
-argv = []
-for i in range(1, len(sys.argv)):
-    argv.append(sys.argv[i])
+        argc = len(sys.argv) - 1
+        argv = []
+        for i in range(1, len(sys.argv)):
+            argv.append(sys.argv[i])
 
-testExpr = open(argv[0], 'r').read()
-print(testExpr)
+        testExpr = open(argv[0], 'r').read()
+        print(testExpr)
 
 
 
