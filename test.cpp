@@ -159,6 +159,16 @@ double pMod(double left, double right) {
   return (val - patch::stoi(sVal)) * right;
 }
 
+template <typename T>
+inline T const & dynamicType(T const & num) {
+  return num;
+}
+
+template <typename T, typename U> 
+inline T const & add(T const & a, U const & b) {
+  return a + b;
+}
+
 int main() {
   Variant v = string("test");
   v = 1;
@@ -170,8 +180,9 @@ int main() {
 
   cout << endl;
 
+  cout << add(4.5, 4) << endl;
+
   cout << pMod(5.5, 4) << endl;
 
   return 0;
 }
-
