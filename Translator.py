@@ -7,6 +7,7 @@ from TypeResolver import *
 class Translator(ast.NodeVisitor):
     #Class constructor
     def __init__(self):
+        self.topNode = 'none'
         self.typeResolver = TypeResolver()
         self.c_file = open('output.cpp', 'w')
 
@@ -85,6 +86,16 @@ class Translator(ast.NodeVisitor):
         if not(assignmentLine == ''):
             self.c_file.write('  ' + assignmentLine + value + ';\n')
 
+    #Serializes print function call into c++ code.
+    #Arguments:
+    #   args: The arguments.
+    def serializePrint(self, args):
+        coutLine = '  cout << '
+        for arg in args:
+            coutLine += self.insertTypeCasts(self.visit(arg)) + ' << '
+        coutLine += 'endl;\n'
+        self.c_file.write(coutLine)
+
     #-----------------------
     #-----Literal Nodes-----
     #-----------------------
@@ -92,7 +103,9 @@ class Translator(ast.NodeVisitor):
         return str(node.n)
 
     def visit_Str(self, node):
-        return 'string("' + str(node.s) + '")'
+        if self.topNode == 'Assign':
+            return 'string("' + str(node.s) + '")'
+        return str('"' + node.s + '"')
     
     #-----------------------
     #-----Variable Node-----
@@ -166,10 +179,18 @@ class Translator(ast.NodeVisitor):
     def visit_Not(self, node):
         return '!'
 
+    def visit_Call(self, node):
+        self.topNode = 'Call'
+
+        if self.visit(node.func) == 'print':
+            self.serializePrint(node.args)
+
     #-------------------------
     #-----Statement Nodes-----
     #-------------------------
     def visit_Assign(self, node):
+        self.topNode = 'Assign'
+
         variables = []
         for target in node.targets:
             variables.append(self.visit(target))
@@ -180,42 +201,11 @@ class Translator(ast.NodeVisitor):
         primitiveType = self.typeResolver.resolveExpressionType(node.value)
         self.typeResolver.updateBoundTypes(variables, primitiveType)
 
-    def visit_Print(self, node):
-        self.c_file.write('  cout << ' + self.insertTypeCasts(self.visit(node.values[0])) + ' << endl;\n')
-
 argc = len(sys.argv) - 1
 argv = []
 for i in range(1, len(sys.argv)):
     argv.append(sys.argv[i])
 
-testExpr = open(argv[0], 'r').read()
-print(testExpr)
-
-expr = """
-a=b=1+1.5*2
-c=a+b
-d="test"
-print(d)
-e=b=3
-print(b)
-a="hello world"
-print(a)
-f=c+e
-"""
-
-expr2= """
-print("hello world")
-a=1
-b=2
-a<b
-"""
-
-expr3= """
-print(b)
-!b
-+b
--a
-"""
-
+expr = open(argv[0], 'r').read()
 tree = ast.parse(expr)
 Translator().translate(tree)
