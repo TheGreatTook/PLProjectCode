@@ -214,16 +214,22 @@ class Translator(ast.NodeVisitor):
     #not including Invert because doing 2's complement math in Python seems like a waste of time
 
     def visit_UnaryOp(self, node):
-        return self.visit(node.op) + self.visit(node.operand)
+        op = self.visit(node.op)
+        if op == "+":
+            return self.visit(node.operand)
+        if op == "-":
+            return "-" + "(" + self.visit(node.operand) + ")"
+        if op == "!":
+            return "!" + "(" + self.visit(node.operand) + ")"
 
     def visit_UAdd(self, node):
-        return '++'
+        return "+"
 
-    def visit_uSub(self, node):
-        return '--'
-
+    def visit_USub(self, node):
+        return "-"
+    
     def visit_Not(self, node):
-        return '!'
+        return "!"
 
     #Control Flow
     def visit_Return(self, node):
@@ -306,11 +312,13 @@ a<b
 """
 
 expr3= """
-print(b)
-!b
-+b
--a
+a = 1
+b = 2
+d = +b
+c = -(a + b)
+e = not b
 """
 
-tree = ast.parse(expr)
+tree = ast.parse(expr3)
 Translator().translate(tree)
+print(ast.dump(tree))

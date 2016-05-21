@@ -179,6 +179,12 @@ class TypeResolver(ast.NodeVisitor):
     def visit_Compare(self, node):
         return 'bool'
 
+    def visit_UnaryOp(self, node):
+        opType = self.visit(node.operand)
+        if self.variableCollection.contains(opType):
+            opType = self.resolveVariableType(opType)
+        return opType
+
 
 
     #-------------------------
@@ -189,6 +195,7 @@ class TypeResolver(ast.NodeVisitor):
         for target in node.targets:
             names.append(self.visit(target))
 
+        print(node.value, self.visit(node.value))
         primitiveType = self.visit(node.value)
 
         for name in names:
