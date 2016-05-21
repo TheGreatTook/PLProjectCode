@@ -9,7 +9,7 @@ int main() {
   string d = string("test");
   cout << d << endl;
   int e;
-  b = e = 3;
+  e = b = 3;
   cout << (int&)b << endl;
   a = string("hello world");
   cout << (string&)a << endl;
