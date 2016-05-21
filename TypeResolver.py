@@ -243,7 +243,7 @@ class TypeResolver(ast.NodeVisitor):
             leftType = self.resolveVariableType(leftType)
         if self.environment.contains(rightType):
             rightType = self.resolveVariableType(rightType)
-        
+
         if leftType == 'Variant' or rightType == 'Variant':
             return 'Variant'
         elif leftType == 'string' or rightType == 'string':
@@ -255,6 +255,18 @@ class TypeResolver(ast.NodeVisitor):
 
     def visit_BoolOp(self, node):
         return 'bool'
+
+    def visit_NameConstant(self, node):
+        return 'bool'
+
+    def visit_Compare(self, node):
+        return 'bool'
+
+    def visit_UnaryOp(self, node):
+        opType = self.visit(node.operand)
+        if self.variableCollection.contains(opType):
+            opType = self.resolveVariableType(opType)
+        return opType
 
     #-------------------------
     #-----Statement Nodes-----
