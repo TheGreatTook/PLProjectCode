@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <math.h>
 using namespace std;
 
 int main() {
@@ -10,7 +11,10 @@ int main() {
   cout << d << endl;
   int e;
   e = b = 3;
+<<<<<<< HEAD
   cout << (int&)b << endl;
+=======
+>>>>>>> 1bcbd0d2f2a6b31cb9472f839788773c2475c9fa
   a = string("hello world");
   cout << (string&)a << endl;
   float f = c + e;

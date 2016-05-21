@@ -5,7 +5,11 @@ class Variable():
         self.name = name
         self.types = []
         self.boundType = 'void'
+<<<<<<< HEAD
         self.ambiguous = False
+=======
+        self.ambiguous = False        
+>>>>>>> 1bcbd0d2f2a6b31cb9472f839788773c2475c9fa
     
     def addType(self, t):
         if not(t in self.types):
@@ -84,10 +88,18 @@ class TypeResolver(ast.NodeVisitor):
     def resolveExpressionType(self, node):
         return self.visit(node)
     
+<<<<<<< HEAD
     #Updates the primitive type bound to variables.
     #Arguments:
     #   variables: The variables to update.
     #   primitiveType: The primitiveType to bind.
+=======
+       #Updates the primitive type bound to variables.
+    #Arguments:
+    #   variables: The variables to update.
+    #   primitiveType: The primitiveType to bind.
+
+>>>>>>> 1bcbd0d2f2a6b31cb9472f839788773c2475c9fa
     def updateBoundTypes(self, variables, primitiveType):
         for variable in variables:
             self.variableCollection.find(variable).boundType = primitiveType
@@ -101,6 +113,10 @@ class TypeResolver(ast.NodeVisitor):
     #-----------------------
     #-----Literal Nodes-----
     #-----------------------
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1bcbd0d2f2a6b31cb9472f839788773c2475c9fa
     def visit_Num(self, node):
         value = str(node.n)
         for c in value:
@@ -108,17 +124,27 @@ class TypeResolver(ast.NodeVisitor):
                 return 'float'
         return 'int'
 
+<<<<<<< HEAD
+=======
+ 
+>>>>>>> 1bcbd0d2f2a6b31cb9472f839788773c2475c9fa
     def visit_Str(self, node):
         return 'string'
 
     #-----------------------
     #-----Variable Node-----
     #-----------------------
+<<<<<<< HEAD
+=======
+
+    #   The Variable name.
+>>>>>>> 1bcbd0d2f2a6b31cb9472f839788773c2475c9fa
     def visit_Name(self, node):
         if not(self.variableCollection.contains(node.id)):
             self.variableCollection.add(node.id)
         return node.id
 
+<<<<<<< HEAD
     #------------------------
     #----Expression Nodes----
     #------------------------
@@ -131,6 +157,21 @@ class TypeResolver(ast.NodeVisitor):
         if self.variableCollection.contains(rightType):
             rightType = self.resolveVariableType(rightType)
         
+=======
+    #--------------------------
+    #-----Expression Nodes-----
+    #--------------------------
+
+
+
+    def visit_BinOp(self, node):
+        leftType = self.visit(node.left)
+        rightType = self.visit(node.right)
+        if self.variableCollection.contains(leftType):
+            leftType = self.resolveVariableType(leftType)
+        if self.variableCollection.contains(rightType):
+            rightType = self.resolveVariableType(rightType)        
+>>>>>>> 1bcbd0d2f2a6b31cb9472f839788773c2475c9fa
         if leftType == 'string' or rightType == 'string':
             return 'string'
         elif leftType == 'float' or rightType == 'float':
@@ -138,11 +179,24 @@ class TypeResolver(ast.NodeVisitor):
         else:
             return 'int'
 
+<<<<<<< HEAD
     def visit_BoolOp(self, node):
         return 'bool'
 
     def visit_IfExp(self, node):
         print("TEST")
+=======
+
+    def visit_BoolOp(self, node):  
+        return 'bool'
+
+    def visit_NameConstant(self, node):
+        return 'bool'
+
+    def visit_Compare(self, node):
+        return 'bool'
+
+>>>>>>> 1bcbd0d2f2a6b31cb9472f839788773c2475c9fa
 
     #-------------------------
     #-----Statement Nodes-----
@@ -151,8 +205,16 @@ class TypeResolver(ast.NodeVisitor):
         names = []
         for target in node.targets:
             names.append(self.visit(target))
+<<<<<<< HEAD
 
         primitiveType = self.visit(node.value)
 
         for name in names:
+=======
+            
+        primitiveType = self.visit(node.value)
+
+        for name in names:
+
+>>>>>>> 1bcbd0d2f2a6b31cb9472f839788773c2475c9fa
             self.variableCollection.extend(name, primitiveType)
