@@ -11,7 +11,7 @@ void addThenPrint(T const & x, U const & y) {
 }
 
 template<typename T, typename U>
-Variant add(T const & x, U const & y) {
+inline T const & add(T const & x, U const & y) {
   return x + y;
 }
 

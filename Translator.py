@@ -124,13 +124,16 @@ class Translator(ast.NodeVisitor):
         l1 = [i+j for i,j in zip(l1[::2], l1[1::2])]
         l2 = [i+j for i,j in zip(l2[::2], l2[1::2])]
 
+        returnString = func.returnType
+        if self.typeResolver.isTemplate(func.returnType):
+            returnString = 'inline ' + func.returnType + ' const &'
         templateString = 'template<typename ' + ''.join(sum([[key, ', typename '] for key in templates], [])[:-1]) + '>'
-        functionString = func.returnType + ' ' + func.name + '(' + ''.join([val for pair in zip(l1, l2) for val in pair]) + ' {'
+        functionString = returnString + ' ' + func.name + '(' + ''.join([val for pair in zip(l1, l2) for val in pair]) + ' {'
         
         self.c_file.write(templateString + '\n')
         self.c_file.write(functionString + '\n')
 
-    #Serializes print function call into c++ code.
+    #Serializes a print function call into c++ code.
     #Arguments:
     #   args: The arguments.
     #Returns:

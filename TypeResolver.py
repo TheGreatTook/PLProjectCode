@@ -11,7 +11,8 @@ class TypeResolver(ast.NodeVisitor):
         self.rootEnvironment = TypeBindingEnvironment()
         self.environment = self.rootEnvironment
 
-        self.c_types = ['int', 'double', 'string', 'bool', 'Variant']
+        self.function = 'main'
+        self.c_types = ['int', 'double', 'string', 'bool', 'void', 'Variant']
         self.BuiltIns = ['print']
     
     #Initializes the root binding environment for a python source program.
@@ -70,6 +71,7 @@ class TypeResolver(ast.NodeVisitor):
     #Arguments:
     #   func: The function whose binding environment we should use.
     def setEnvironment(self, func):
+        self.function = func
         if self.rootEnvironment.contains(func):
             self.environment = self.rootEnvironment.find(func).environment
         else:
@@ -140,8 +142,6 @@ class TypeResolver(ast.NodeVisitor):
     #Arguments:
     #   name: The name of the function.
     #   argTypess: The argument types.
-    #Returns:
-    #   The functions return type.
     def resolveReturnType(self, name, argTypes):
         self.setEnvironment(name)
 
@@ -167,7 +167,9 @@ class TypeResolver(ast.NodeVisitor):
         var = self.environment.find(name)
         if isinstance(var, Function):
             return var.returnType
-        elif len(var.types) > 1:
+        elif self.isTemplate(var.types[0]) and not(self.function == 'main'):
+            return var.types[0]
+        elif len(var.types) > 1 or self.isTemplate(var.types[0]):
             return 'Variant'
         elif len(var.types) == 1:
             return var.types[0]
@@ -215,12 +217,12 @@ class TypeResolver(ast.NodeVisitor):
 
         if leftType == 'void' or rightType == 'void':
             return 'void'
-        #elif self.isTemplate(leftType) and self.isTemplate(rightType):
-            #return 'Variant'
         elif self.isTemplate(leftType):
             return leftType
         elif self.isTemplate(rightType):
             return rightType
+        elif leftType == 'Variant' and rightType == 'Variant':
+            return 'Variant'
         elif leftType == 'string' or rightType == 'string':
             return 'string'
         elif leftType == 'double' or rightType == 'double':
@@ -289,7 +291,4 @@ class TypeResolver(ast.NodeVisitor):
         return node.arg
 
     def visit_Return(self, node):
-        t = self.visit(node.value)
-        if self.isTemplate(t):
-            return 'Variant'
-        return t
+        return self.resolveExpressionType(node.value)
