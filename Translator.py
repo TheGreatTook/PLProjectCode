@@ -3,6 +3,21 @@ import re
 import ast
 from TypeResolver import *
 
+class scopingHelper(ast.NodeVisitor):
+    def __init__(self, TypeResolver):
+        self.typeResolver = TypeResolver
+
+    def visit_Name(self, node):
+        return str(node.id)
+
+    def visit_Assign(self, node):
+        elementsToDeclare = []
+        for target in node.targets:
+            name = self.visit(target)
+            if self.typeResolver.boundType(name) == 'void' and not (name in elementsToDeclare) :
+                elementsToDeclare.append(name)
+        return elementsToDeclare
+
 #The Translator class is responsible for translating the pyton
 #source code into valid C++ code.
 class Translator(ast.NodeVisitor):
@@ -283,20 +298,32 @@ class Translator(ast.NodeVisitor):
         return "continue"
 
     def visit_If(self, node):
-        self.f.write('  if(')
-        self.f.write(self.visit(node.test) +')\n' + '  {' + '\n  ')  
+        variables = []
+        for element in node.body:
+            if isinstance(element, ast.Assign):
+                variables = scopingHelper(self.typeResolver).visit_Assign(element)
+                self.typeResolver.bindTypes(variables, 'forwardDeclaration')
+                self.serializeAssignment_Variable(variables, None)        
+        self.c_file.write('  if(')
+        self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n  ')  
         for i in range(0, len(node.body)):
-            self.f.write(self.visit(node.body[i]) + ';\n')
-        self.f.write('  } \n')
+            self.c_file.write('  ' + self.visit(node.body[i]) + ';\n')
+        self.c_file.write('  } \n')
         if len(node.orelse) != 0:
-            self.f.write("  else \n  { \n  " + self.visit((node.orelse[0])) + ';\n  } \n')
+            self.c_file.write("  else \n  { \n  " + self.visit((node.orelse[0])) + ';\n  } \n')
 
     def visit_While(self, node):
-        self.f.write('  while (')
-        self.f.write(self.visit(node.test) +')\n' + '  {' + '\n  ')  
+        variables = []
+        for element in node.body:
+            if isinstance(element, ast.Assign):
+                variables = scopingHelper(self.typeResolver).visit_Assign(element)
+                self.typeResolver.bindTypes(variables, 'forwardDeclaration')
+                self.serializeAssignment_Variable(variables, None)
+        self.c_file.write('  while (')
+        self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n  ')  
         for i in range(0, len(node.body)):
-            self.f.write(self.visit(node.body[i]) + ';\n')
-        self.f.write('  } \n')        
+            self.visit(node.body[i])
+        self.c_file.write('  } \n')             
 
     def visit_Call(self, node):
         if self.visit(node.func) == 'print':
