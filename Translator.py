@@ -82,11 +82,11 @@ class Translator(ast.NodeVisitor):
             value = 'string(' + value + ')'
         return self.insertTypeCasts(value)
 
-    #Serialzes a variable assignment expressions into c++ code.
+    #Serialzes an assignment expressions into c++ code.
     #Arguments:
     #   variables: The variables.
     #   value: The value.
-    def serializeAssignment_Variable(self, variables, value):
+    def serializeAssignment(self, variables, value):
         variants = []
         primitives = []
         for variable in variables:
@@ -108,10 +108,10 @@ class Translator(ast.NodeVisitor):
             assignmentString = ''.join(sum([[var, ' = '] for var in variables], [])[:-1])
             self.c_file.write('  ' + assignmentString + ' = ' + value + ';\n')
 
-    #Serialzes a function assignment expressions into c++ code.
+    #Serialzes a function declaration expressions into c++ code.
     #Arguments:
     #   func: The function from the binding environment.
-    def serializeAssignment_Function(self, func):
+    def serializeFunctionDeclaration(self, func):
         templateString = 'template <'
         templateCount = 0
 
@@ -139,6 +139,8 @@ class Translator(ast.NodeVisitor):
     #Serializes print function call into c++ code.
     #Arguments:
     #   args: The arguments.
+    #Returns:
+    #   A c++ cout statement.
     def serializePrint(self, args):
         return 'cout << ' + ''.join(sum([[self.decorate(arg), ' << '] for arg in args], [])) + 'endl'
 
@@ -146,6 +148,8 @@ class Translator(ast.NodeVisitor):
     #Arguments:
     #   name: The function name.
     #   args: The arguments.
+    #Returns:
+    #   A c++ function call statement.
     def serializeCall(self, name, args):
         return name + '(' + ''.join(sum([[self.decorate(arg), ','] for arg in args], [])[:-1]) +')'
 
@@ -175,9 +179,7 @@ class Translator(ast.NodeVisitor):
         leftExpr = self.decorate(node.left)
         rightExpr = self.decorate(node.right)
 
-        if isinstance(node.left, ast.Str) and isinstance(node.right, ast.Str) and op == '+':
-            return leftExpr + '.append(' + rightExpr + ')'
-        elif op == '//':
+        if op == '//':
             return 'floor(' + leftExpr + '/' + rightExpr +')'
         elif op == '%':
             return 'pMod(' + leftExpr + ',' + rightExpr + ')'
@@ -303,7 +305,7 @@ class Translator(ast.NodeVisitor):
             if isinstance(element, ast.Assign):
                 variables = scopingHelper(self.typeResolver).visit_Assign(element)
                 self.typeResolver.bindTypes(variables, 'forwardDeclaration')
-                self.serializeAssignment_Variable(variables, None)        
+                self.serializeAssignment(variables, None)        
         self.c_file.write('  if(')
         self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n  ')  
         for i in range(0, len(node.body)):
@@ -318,7 +320,7 @@ class Translator(ast.NodeVisitor):
             if isinstance(element, ast.Assign):
                 variables = scopingHelper(self.typeResolver).visit_Assign(element)
                 self.typeResolver.bindTypes(variables, 'forwardDeclaration')
-                self.serializeAssignment_Variable(variables, None)
+                self.serializeAssignment(variables, None)
         self.c_file.write('  while (')
         self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n  ')  
         for i in range(0, len(node.body)):
@@ -346,7 +348,7 @@ class Translator(ast.NodeVisitor):
             variables.append(self.visit(target))
         
         value = self.decorate(node.value)
-        self.serializeAssignment_Variable(variables, value)
+        self.serializeAssignment(variables, value)
 
         primitiveType = self.typeResolver.resolveExpressionType(node.value)
         self.typeResolver.bindType(variables, primitiveType)
@@ -359,7 +361,7 @@ class Translator(ast.NodeVisitor):
             self.typeResolver.setEnvironment(node.name)
 
             self.translatedFunctions.append(node.name)
-            self.serializeAssignment_Function(self.typeResolver.retrieveFunction(node.name))
+            self.serializeFunctionDeclaration(self.typeResolver.retrieveFunction(node.name))
             for expr in node.body:
                 self.visit(expr)
             self.c_file.write('}\n\n')

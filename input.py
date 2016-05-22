@@ -1,24 +1,16 @@
-def add(a,b):
-    f="look a local variable"
-    z=b
-    x_xx = z + "noooo!"
-    return a + b
+def addThenPrint(x,y):
+    val = x + y
+    print(x + y)
 
-a=b=1+1.5*2
-c=a+b
-d="test"
+def add(x,y):
+    return x + y
+
+b=3
+a=2.5
+c=add(a,b)
+print(c)
+b=4.5
+a=2
+d=add(a,b)
 print(d)
-e=b=3
-print(b)
-add(e,b)
-add(1,5.5)
-z=add(1,5.5)
-print(z, "cool")
-a="hello world" + "!"
-print(a)
-f=c+e
-x = 5**2
-print(x)
-x = "5**2"
-y=x
-print(x)
+addThenPrint(c,d)

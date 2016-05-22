@@ -14,6 +14,10 @@ class Function():
     def addArgument(self, name):
         self.arguments.append(Variable(name))
 
+    def extendArguments(self, argTypes):
+        for i in range(0, len(argTypes)):
+            self.arguments[i].addType(argTypes[i])
+
 #The Variable class is a data structure representing a variable
 #in the python source. It contains the name of a variable along with
 #all the typing information associated with that variable.
@@ -23,7 +27,6 @@ class Variable():
         self.name = name
         self.types = []
         self.boundType = 'void'
-        self.ambiguous = False
     
     def addType(self, t):
         if not(t in self.types):
@@ -72,13 +75,15 @@ class TypeBindingEnvironment():
         print(prefix + '-----------------------------------')
         for elt in self.elements:
             if isinstance(elt, Variable):
-                print(prefix + elt.name, '{', elt.types, elt.boundType, elt.ambiguous, '}')
+                print(prefix + elt.name, '{', elt.types, elt.boundType, '}')
             if isinstance(elt, Function):
                 print(prefix + elt.name, '{')
                 print(prefix + 'arguments:')
                 for arg in elt.arguments:
-                    print(prefix + '>>' + arg.name, arg.types, arg.boundType, arg.ambiguous)
+                    print(prefix + '>>' + arg.name, arg.types, arg.boundType)
                 print(prefix + 'environment:')
                 elt.environment.dump(offset + 1)
-                print(prefix + elt.returnType, elt.boundType, '}')
+                print(prefix + 'returns:')
+                print(prefix + '>>' + elt.returnType)
+                print(elt.boundType, '}')
         print(prefix + '-----------------------------------')

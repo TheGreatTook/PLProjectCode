@@ -1,10 +1,6 @@
 import ast
 from TypeBindingEnvironment import *
 
-class Extractor(ast.NodeVisitor):
-    def visit_Name(self, node):
-        return node.id
-
 #The TypeResolver class is responsible for resolving the list of possible types
 #each variable in the python source can be bound to. TypeResolve achieves this by doing
 #an initial pass over the python source AST. Additionally TypeResolver can
@@ -14,6 +10,7 @@ class TypeResolver(ast.NodeVisitor):
     def __init__(self):
         self.rootEnvironment = TypeBindingEnvironment()
         self.environment = self.rootEnvironment
+
         self.c_types = ['int', 'double', 'string', 'bool', 'Variant']
         self.BuiltIns = ['print']
     
@@ -21,28 +18,53 @@ class TypeResolver(ast.NodeVisitor):
     #Arguments:
     #   tree: The python source AST.
     def initialize(self, tree):
-        self.visit(tree)
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                name = self.visit(node.func)
-                if not(name in self.BuiltIns):
-                    self.resolveArgumentTypes(node)
-
-        for elt in self.environment.elements:
-            if isinstance(elt, Function):
-                generate = self.makeTemplateGenerator(['T', 'U', 'V', 'W'])
-                for arg in elt.arguments:
-                    if len(arg.types) > 1 or arg.types[0] == 'Variant':
-                        arg.types = [generate()]
-                    arg.boundType = arg.types[0]
-
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
-                if not(node.name in self.BuiltIns):
-                    self.resolveBindingEnvironment(node)
-
+                self.visit(node)
+        self.visit(tree)
         self.environment.clearBindings()
+
+    #Creates a template generator closure.
+    #Arguments:
+    #   templates: A list of template keys.
+    #Returns:
+    #   A unqiue template key.
+    def makeTemplateGenerator(self, templates):
+        count = [0]
+        def generateTemplate():
+            key = ''
+            repeat = (count[0] // len(templates)) + 1
+            for i in range(0, repeat):
+                key += templates[count[0] % len(templates)]
+            count[0] += 1
+            return key
+        return generateTemplate
+
+    #Generates the function argument template keys.
+    #Arguments:
+    #   func: The function.
+    def generateTemplateKeys(self, func):
+        generate = self.makeTemplateGenerator(['T', 'U', 'V', 'W'])
+        for arg in func.arguments:
+            arg.types = [generate()]
+            arg.boundType = arg.types[0]
+
+    #Constructs the binding environment of a function.
+    #Arguments:
+    #   func: The function.
+    def constructBindingEnvironment(self, func):
+        self.setEnvironment(func.name)
+
+        for arg in func.arguments:
+            self.environment.add(arg)
+
+        for expr in func.body:
+            if isinstance(expr, ast.Return):
+                func.returnType = self.visit(expr)
+            else:
+                self.visit(expr)
+
+        self.setEnvironment('main')
 
     #Sets the current binding environment.
     #Arguments:
@@ -62,6 +84,14 @@ class TypeResolver(ast.NodeVisitor):
             if isinstance(elt, Variable):
                 variables.append(elt.name)
         return variables
+
+    #Retrieves a function from the root binding environment.
+    #Arguments:
+    #   name: The function name.
+    #Returns:
+    #   The function.
+    def retrieveFunction(self, name):
+        return self.rootEnvironment.find(name)
 
     #Dumps the binding environment to standard output.
     def dump(self):
@@ -106,70 +136,10 @@ class TypeResolver(ast.NodeVisitor):
             return True
         return False
 
-    #Retrieves a function from the root binding environment.
-    #Arguments:
-    #   name: The function name.
-    #Returns:
-    #   The function.
-    def retrieveFunction(self, name):
-        return self.rootEnvironment.find(name)
-
-    #Creates a template generator closure.
-    #Arguments:
-    #   templates: A list of template keys
-    #   count: A count of how many templates have been made by this closure.
-    #Returns:
-    #   A unqiue template key.
-    def makeTemplateGenerator(self, templates):
-        count = [0]
-        def generateTemplate():
-            key = ''
-            repeat = (count[0] // len(templates)) + 1
-            for i in range(0, repeat):
-                key += templates[count[0] % len(templates)]
-            count[0] += 1
-            return key
-        return generateTemplate
-
-    #Resolves a functions argument types.
-    #Arguments:
-    #   node: The AST for a Call node
-    def resolveArgumentTypes(self, node):
-        func = self.retrieveFunction(self.visit(node.func))
-        args = self.visit(node)
-        for i in range(0, len(args)):
-            var = self.environment.find(args[i])
-            if isinstance(var, Variable):
-                func.arguments[i].addType(var.boundType)
-            elif isinstance(var, Function):
-                print('???')
-            elif self.isCType(args[i]):
-                func.arguments[i].addType(args[i])
-
-    #Resolves the binding environment of a function.
-    #Arguments:
-    #   node: The AST for a FunctionDef node.
-    def resolveBindingEnvironment(self, node):
-        func = self.retrieveFunction(node.name)
-
-        self.setEnvironment(node.name)
-
-        for arg in func.arguments:
-            self.environment.add(arg)
-
-        func.body = node.body
-        for expr in func.body:
-            if isinstance(expr, ast.Return):
-                func.returnType = self.visit(expr)
-            else:
-                self.visit(expr)
-
-        self.setEnvironment('main')
-
-    #Resolves the return type of a function
+    #Resolves the return type of a function.
     #Arguments:
     #   name: The name of the function.
-    #   args: The arguments being passed.
+    #   argTypess: The argument types.
     #Returns:
     #   The functions return type.
     def resolveReturnType(self, name, argTypes):
@@ -213,12 +183,6 @@ class TypeResolver(ast.NodeVisitor):
         primitiveType = self.visit(node)
         if self.environment.contains(primitiveType):
             primitiveType = self.boundType(primitiveType)
-        elif isinstance(node, ast.Call):
-            name = Extractor().visit(node.func)
-            if self.environment.contains(name):
-                primitiveType = self.boundType(name)
-            if primitiveType == 'void':
-                primitiveType = 'Variant'
         return primitiveType
     
     #-----------------------
@@ -249,8 +213,10 @@ class TypeResolver(ast.NodeVisitor):
         leftType = self.resolveExpressionType(node.left)
         rightType = self.resolveExpressionType(node.right)
 
-        if self.isTemplate(leftType) and self.isTemplate(rightType):
-            return 'Variant'
+        if leftType == 'void' or rightType == 'void':
+            return 'void'
+        #elif self.isTemplate(leftType) and self.isTemplate(rightType):
+            #return 'Variant'
         elif self.isTemplate(leftType):
             return leftType
         elif self.isTemplate(rightType):
@@ -278,10 +244,12 @@ class TypeResolver(ast.NodeVisitor):
         return opType
 
     def visit_Call(self, node):
-        args = []
-        for arg in node.args:
-            args.append(self.visit(arg))
-        return args
+        name = self.visit(node.func)
+        if self.environment.contains(name):
+            func = self.environment.find(name)
+            if func.boundType == 'void':
+                return func.returnType
+            return func.boundType
 
     #-------------------------
     #-----Statement Nodes-----
@@ -305,7 +273,11 @@ class TypeResolver(ast.NodeVisitor):
             args = self.visit(node.args)
             for arg in args:
                 func.addArgument(arg)
+            func.body = node.body
+
             self.environment.add(func)
+            self.generateTemplateKeys(func)
+            self.constructBindingEnvironment(func)
 
     def visit_arguments(self, node):
         args = []
@@ -319,5 +291,5 @@ class TypeResolver(ast.NodeVisitor):
     def visit_Return(self, node):
         t = self.visit(node.value)
         if self.isTemplate(t):
-            t = 'Variant'
+            return 'Variant'
         return t
