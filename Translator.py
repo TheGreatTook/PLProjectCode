@@ -90,7 +90,6 @@ class Translator(ast.NodeVisitor):
     #   value: The value.
     def serializeAssignment_Variable(self, variables, value):
         variantLine = ''
-
         variantCount = 0
 
         primitiveLine = ''
@@ -115,19 +114,25 @@ class Translator(ast.NodeVisitor):
                     primitiveCount += 1
             assignmentLine += variable + ' = '
 
-        if variantCount + primitiveCount == 1 and len(variables) == 1:
-            if variantCount == 1:
-                variantLine += ' = ' + value
-            else:
-                primitiveLine += ' = ' + value
-            assignmentLine = ''
+        if value == None:
+            if not(variantLine == ''):
+                self.c_file.write('  ' + variantLine + ';\n')
+            if not(primitiveLine == ''):
+                self.c_file.write('  ' + primitiveLine + ';\n')
+        else:
+            if variantCount + primitiveCount == 1 and len(variables) == 1:
+                if variantCount == 1:
+                    variantLine += ' = ' + value
+                else:
+                    primitiveLine += ' = ' + value
+                    assignmentLine = ''
 
-        if not(variantLine == ''):
-            self.c_file.write('  ' + variantLine + ';\n')
-        if not(primitiveLine == ''):
-            self.c_file.write('  ' + primitiveLine + ';\n')
-        if not(assignmentLine == ''):
-            self.c_file.write('  ' + assignmentLine + value + ';\n')
+            if not(variantLine == ''):
+                self.c_file.write('  ' + variantLine + ';\n')
+            if not(primitiveLine == ''):
+                self.c_file.write('  ' + primitiveLine + ';\n')
+            if not(assignmentLine == ''):
+                self.c_file.write('  ' + assignmentLine + value + ';\n')
 
     #Serialzes a function assignment expressions into c++ code.
     #Arguments:
