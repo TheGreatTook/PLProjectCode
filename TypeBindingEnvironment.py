@@ -1,14 +1,23 @@
+#The Function class is a data structure representing a function
+#in the python source. It contains the name of a function along with
+#all the typing information associated with that function.
+#Function's are stored in the type binding environment.
 class Function():
     def __init__(self, name):
         self.name = name
         self.arguments = []
         self.environment = TypeBindingEnvironment()
+        self.body = None
         self.returnType = 'void'
-        self.template = False
+        self.boundType = 'void'
 
     def addArgument(self, name):
         self.arguments.append(Variable(name))
 
+#The Variable class is a data structure representing a variable
+#in the python source. It contains the name of a variable along with
+#all the typing information associated with that variable.
+#Variable's are stored in the type binding environment.
 class Variable():
     def __init__(self, name):
         self.name = name
@@ -20,27 +29,40 @@ class Variable():
         if not(t in self.types):
             self.types.append(t)
 
+#The TypeBindingEnvironment class is a data structure that holds
+#all the relevant typing information for every variable and function
+#found in the python source. The TypeBindingEnvironment is used by
+#the type resolver at translation time to retrieve the appropriate typing 
+#information associated with variables and functions.
 class TypeBindingEnvironment():
     def __init__(self):
-        self.variables = []
+        self.elements = []
 
     def size(self):
-        return len(self.variables)
+        return len(self.elements)
 
     def contains(self, name):
-        for var in self.variables:
-            if var.name == name:
+        for elt in self.elements:
+            if elt.name == name:
                 return True
         return False
 
     def find(self, name):
-        for var in self.variables:
-            if var.name == name:
-                return var
+        for elt in self.elements:
+            if elt.name == name:
+                return elt
         return None
 
-    def add(self, var):
-        self.variables.append(var)
+    def add(self, elt):
+        self.elements.append(elt)
+
+    def clearBindings(self):
+        for elt in self.elements:
+            elt.boundType = 'void'
+            if isinstance(elt, Function):
+                elt.environment.clearBindings()
+                for arg in elt.arguments:
+                    arg.boundType = arg.types[0]
 
     def dump(self, offset):
         prefix = ''
@@ -48,15 +70,15 @@ class TypeBindingEnvironment():
             prefix += '>>'
 
         print(prefix + '-----------------------------------')
-        for var in self.variables:
-            if isinstance(var, Variable):
-                print(prefix + var.name, '{', var.types, var.boundType, var.ambiguous, '}')
-            if isinstance(var, Function):
-                print(prefix + var.name, '{')
+        for elt in self.elements:
+            if isinstance(elt, Variable):
+                print(prefix + elt.name, '{', elt.types, elt.boundType, elt.ambiguous, '}')
+            if isinstance(elt, Function):
+                print(prefix + elt.name, '{')
                 print(prefix + 'arguments:')
-                for arg in var.arguments:
+                for arg in elt.arguments:
                     print(prefix + '>>' + arg.name, arg.types, arg.boundType, arg.ambiguous)
                 print(prefix + 'environment:')
-                var.environment.dump(offset + 1)
-                print(prefix + var.returnType, var.template, '}')
+                elt.environment.dump(offset + 1)
+                print(prefix + elt.returnType, elt.boundType, '}')
         print(prefix + '-----------------------------------')

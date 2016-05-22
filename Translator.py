@@ -1,4 +1,5 @@
 import sys
+import re
 import ast
 from TypeResolver import *
 
@@ -7,9 +8,8 @@ from TypeResolver import *
 class Translator(ast.NodeVisitor):
     #Class constructor
     def __init__(self):
-        self.topNode = 'none'
-        self.translatedFunctions = []
         self.typeResolver = TypeResolver()
+        self.translatedFunctions = []
         self.c_file = open('output.cpp', 'w')
 
     #Translates a python source AST into C++ code.
@@ -38,30 +38,6 @@ class Translator(ast.NodeVisitor):
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
                 self.visit(node)
-    
-    #Tokenizes a string.
-    #Arguments:
-    #   string: The string to tokenize.
-    def tokenize(self, string):
-        inString = False
-        tokens = []
-        simpleTokens = string.split()
-        complexToken = ''
-        for token in simpleTokens:
-            if not(inString):
-                complexToken = token
-            else:
-                complexToken += ' ' + token
-
-            if token.startswith('string("'):
-                inString = True
-            if token.endswith('")'):
-                inString = False
-
-            if not(inString):
-                tokens.append(complexToken)
-                complexToken = ''
-        return tokens
 
     #Insertes type casts for variables of type Variant. This is necessary 
     #because C++ requires the type of a variable to be know at compile time
@@ -71,109 +47,92 @@ class Translator(ast.NodeVisitor):
     #Returns:
     #   A new expression with the proper type casts inserted.
     def insertTypeCasts(self, expr):
-        tokens = self.tokenize(expr)
+        tokens = re.findall("string\(.*\)|\S+", expr)
         for var in self.typeResolver.getVariables():
-            primitiveType = self.typeResolver.boundType(var.name)
-            if self.typeResolver.resolveVariableType(var.name) == 'Variant':
-                for i in range(0, len(tokens)):
-                    if tokens[i] == var.name:
-                        tokens[i] = '(' + primitiveType + '&)' + var.name
+            primitiveType = self.typeResolver.boundType(var)
+            if self.typeResolver.resolveVariableType(var) == 'Variant':
+                cast = '(' + primitiveType + '&)' + var
+                tokens = [cast if token == var else token for token in tokens]
+        return ''.join(sum([[token, ' '] for token in tokens], [])[:-1])
 
-        newExpr = tokens[0]
-        for i in range(1, len(tokens)):
-            newExpr += ' ' + tokens[i]
-        return newExpr
+    #Decorates the translated value string of an AST node 
+    #with additional characters required in c++.
+    #Arguments:
+    #   node: The AST node whose translation should be decorated.
+    #Returns:
+    #   A decorated string.
+    def decorate(self, node):
+        value = self.visit(node)
+        if isinstance(node, ast.Str):
+            value = 'string(' + value + ')'
+        return self.insertTypeCasts(value)
 
     #Serialzes a variable assignment expressions into c++ code.
     #Arguments:
     #   variables: The variables.
     #   value: The value.
     def serializeAssignment_Variable(self, variables, value):
-        variantLine = ''
-        variantCount = 0
-
-        primitiveLine = ''
-        primitiveCount = 0
-
-        assignmentLine = ''
-
+        variants = []
+        primitives = []
         for variable in variables:
             if self.typeResolver.boundType(variable) == 'void':
                 variableType = self.typeResolver.resolveVariableType(variable)
                 if variableType == 'Variant':
-                    if variantCount == 0:
-                        variantLine += variableType + ' '  + variable
-                    else:
-                        variantLine += ', ' + variable
-                    variantCount += 1
+                    variants.append(variable)
                 else:
-                    if primitiveCount == 0:
-                        primitiveLine += variableType + ' ' + variable
-                    else:
-                        primitiveLine += ', ' + variable
-                    primitiveCount += 1
-            assignmentLine += variable + ' = '
-
-        if value == None:
-            if not(variantLine == ''):
-                self.c_file.write('  ' + variantLine + ';\n')
-            if not(primitiveLine == ''):
-                self.c_file.write('  ' + primitiveLine + ';\n')
-        else:
-            if variantCount + primitiveCount == 1 and len(variables) == 1:
-                if variantCount == 1:
-                    variantLine += ' = ' + value
-                else:
-                    primitiveLine += ' = ' + value
-                    assignmentLine = ''
-
-            if not(variantLine == ''):
-                self.c_file.write('  ' + variantLine + ';\n')
-            if not(primitiveLine == ''):
-                self.c_file.write('  ' + primitiveLine + ';\n')
-            if not(assignmentLine == ''):
-                self.c_file.write('  ' + assignmentLine + value + ';\n')
+                    primitives.append(variable)
+        
+        if len(variants) > 0:
+            variantString = 'Variant ' + ''.join(sum([[var, ', '] for var in variants], [])[:-1])
+            self.c_file.write('  ' + variantString + ';\n')
+        if len(primitives) > 0:
+            primitiveType = self.typeResolver.resolveVariableType(primitives[0]) + ' '
+            primitiveString = primitiveType + ''.join(sum([[var, ', '] for var in primitives], [])[:-1])
+            self.c_file.write('  ' + primitiveString + ';\n')
+        if len(variables) > 0 and not(value == None):
+            assignmentString = ''.join(sum([[var, ' = '] for var in variables], [])[:-1])
+            self.c_file.write('  ' + assignmentString + ' = ' + value + ';\n')
 
     #Serialzes a function assignment expressions into c++ code.
     #Arguments:
     #   func: The function from the binding environment.
     def serializeAssignment_Function(self, func):
-        templates = ['T', 'U', 'V', 'W']
-        templateLine = 'template <'
+        templateString = 'template <'
         templateCount = 0
 
-        functionLine = func.name + '('
+        functionString = func.name + '('
         argumentCount = 0
         for arg in func.arguments:
             if argumentCount > 0:
-                functionLine += ', '
-            if len(arg.types) > 1:
+                functionString += ', '
+            if len(arg.types) == 1 and self.typeResolver.isTemplate(arg.types[0]):
                 if templateCount > 0:
-                   templateLine += ', ' 
-                templateLine += 'typename ' + templates[templateCount]
-                functionLine += templates[templateCount] + ' const & ' + arg.name
+                   templateString += ', ' 
+                templateString += 'typename ' + arg.types[0]
+                functionString += arg.types[0] + ' const & ' + arg.name
                 templateCount += 1
             else:
-                functionLine += arg.types[0] + ' ' + arg.name
+                functionString += arg.types[0] + ' ' + arg.name
             argumentCount += 1
+        templateString += '>'
+        functionString += ') {'
 
-        templateLine += '>'
-        if func.template:
-            functionLine = 'inline ' + templates[0] + ' const & ' + functionLine + ') {'
-        
         if templateCount > 0:
-            self.c_file.write(templateLine + '\n')
-        self.c_file.write(functionLine + '\n')
+            self.c_file.write(templateString + '\n')
+        self.c_file.write(func.returnType + ' ' + functionString + '\n')
 
     #Serializes print function call into c++ code.
     #Arguments:
     #   args: The arguments.
     def serializePrint(self, args):
-        coutLine = '  cout << '
-        for arg in args:
-            coutLine += self.insertTypeCasts(self.visit(arg)) + ' << '
-        coutLine += 'endl;\n'
-        self.c_file.write(coutLine)
+        return 'cout << ' + ''.join(sum([[self.decorate(arg), ' << '] for arg in args], [])) + 'endl'
+
+    #Serializes a function call into c++ code.
+    #Arguments:
+    #   name: The function name.
+    #   args: The arguments.
+    def serializeCall(self, name, args):
+        return name + '(' + ''.join(sum([[self.decorate(arg), ','] for arg in args], [])[:-1]) +')'
 
     #-----------------------
     #-----Literal Nodes-----
@@ -182,31 +141,35 @@ class Translator(ast.NodeVisitor):
         return str(node.n)
 
     def visit_Str(self, node):
-        if self.topNode == 'Assign':
-            return 'string("' + str(node.s) + '")'
-        return str('"' + node.s + '"')
+        return '"' + node.s + '"'
     
     #-----------------------
     #-----Variable Node-----
     #-----------------------
     def visit_Name(self, node):
-        return str(node.id)
+        return node.id
 
     #--------------------------
     #-----Expression Nodes-----
     #--------------------------
+    def visit_Expr(self, node):
+        self.c_file.write('  ' + self.visit(node.value) + ';\n')
+
     def visit_BinOp(self, node):
-        if(self.visit(node.op) == '//'):
-            self.typeInt += 1
-            return 'floor(' + self.visit(node.left) + '/' + self.visit(node.right) +')'
-        elif(self.visit(node.op) == '%'):
-            self.typeInt += 1
-            return 'pMod(' + self.visit(node.left) + ',' + self.visit(node.right) + ')'
-        elif(self.visit(node.op) == '**'):
-            self.typeFloat +=1
-            return 'pow(' + self.visit(node.left) + ',' + self.visit(node.right) + ')'
+        op = self.visit(node.op)
+        leftExpr = self.decorate(node.left)
+        rightExpr = self.decorate(node.right)
+
+        if isinstance(node.left, ast.Str) and isinstance(node.right, ast.Str) and op == '+':
+            return leftExpr + '.append(' + rightExpr + ')'
+        elif op == '//':
+            return 'floor(' + leftExpr + '/' + rightExpr +')'
+        elif op == '%':
+            return 'pMod(' + leftExpr + ',' + rightExpr + ')'
+        elif op == '**':
+            return 'pow(' + leftExpr + ',' + rightExpr + ')'
         else:
-            return self.visit(node.left) + " " + self.visit(node.op) + " " + self.visit(node.right)
+            return leftExpr + " " + op + " " + rightExpr
 
     def visit_Add(self, node):
         return '+'
@@ -290,7 +253,6 @@ class Translator(ast.NodeVisitor):
 
     #Unary Nodes
     #not including Invert because doing 2's complement math in Python seems like a waste of time
-
     def visit_UnaryOp(self, node):
         op = self.visit(node.op)
         if op == "+":
@@ -311,7 +273,8 @@ class Translator(ast.NodeVisitor):
 
     #Control Flow
     def visit_Return(self, node):
-        return "return "+ self.visit(node.value)
+        value = self.visit(node.value)
+        self.c_file.write('  return ' + value + ';\n')
 
     def visit_Break(self, node):
         return "break"
@@ -320,7 +283,6 @@ class Translator(ast.NodeVisitor):
         return "continue"
 
     def visit_If(self, node):
-
         self.f.write('  if(')
         self.f.write(self.visit(node.test) +')\n' + '  {' + '\n  ')  
         for i in range(0, len(node.body)):
@@ -336,45 +298,38 @@ class Translator(ast.NodeVisitor):
             self.f.write(self.visit(node.body[i]) + ';\n')
         self.f.write('  } \n')        
 
-    #Statement Nodes
-
     def visit_Call(self, node):
-        self.topNode = 'Call'
-
         if self.visit(node.func) == 'print':
-            self.serializePrint(node.args)
+            return self.serializePrint(node.args)
         else:
-            callLine = ''
-            callLine += self.visit(node.func) + '('
-            for i in range(0, len(node.args)):
-                if i > 0:
-                    callLine += ', '
-                callLine += self.insertTypeCasts(self.visit(node.args[i]))
-            callLine += ')'
-            self.c_file.write('  ' + callLine + ';\n')
+            name = self.visit(node.func)
+            argTypes = []
+            for arg in node.args:
+                argTypes.append(self.typeResolver.resolveExpressionType(arg))
+            self.typeResolver.resolveReturnType(name, argTypes)
+
+            return self.serializeCall(name, node.args)
 
     #-------------------------
     #-----Statement Nodes-----
     #-------------------------
     def visit_Assign(self, node):
-        self.topNode = 'Assign'
-
         variables = []
         for target in node.targets:
             variables.append(self.visit(target))
         
-        value = self.insertTypeCasts(self.visit(node.value))
+        value = self.decorate(node.value)
         self.serializeAssignment_Variable(variables, value)
 
         primitiveType = self.typeResolver.resolveExpressionType(node.value)
-        self.typeResolver.updateBoundTypes(variables, primitiveType)
+        self.typeResolver.bindType(variables, primitiveType)
     
     #--------------------------
     #---Function/Class Nodes---
     #--------------------------
     def visit_FunctionDef(self, node):
         if not(node.name in self.translatedFunctions):
-            self.typeResolver.function = node.name
+            self.typeResolver.setEnvironment(node.name)
 
             self.translatedFunctions.append(node.name)
             self.serializeAssignment_Function(self.typeResolver.retrieveFunction(node.name))
@@ -382,11 +337,7 @@ class Translator(ast.NodeVisitor):
                 self.visit(expr)
             self.c_file.write('}\n\n')
 
-            self.typeResolver.function = 'main'
-
-    def visit_Return(self, node):
-        value = self.visit(node.value)
-        self.c_file.write('  return ' + value + ';\n')
+            self.typeResolver.setEnvironment('main')
 
 argc = len(sys.argv) - 1
 argv = []
