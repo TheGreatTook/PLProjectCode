@@ -3,14 +3,14 @@
 #include <string>
 using namespace std;
 
-template <typename T, typename U>
+template<typename T, typename U>
 void addThenPrint(T const & x, U const & y) {
   T val;
   val = x + y;
   cout << x + y << endl;
 }
 
-template <typename T, typename U>
+template<typename T, typename U>
 Variant add(T const & x, U const & y) {
   return x + y;
 }

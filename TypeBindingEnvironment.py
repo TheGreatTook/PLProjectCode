@@ -14,10 +14,6 @@ class Function():
     def addArgument(self, name):
         self.arguments.append(Variable(name))
 
-    def extendArguments(self, argTypes):
-        for i in range(0, len(argTypes)):
-            self.arguments[i].addType(argTypes[i])
-
 #The Variable class is a data structure representing a variable
 #in the python source. It contains the name of a variable along with
 #all the typing information associated with that variable.

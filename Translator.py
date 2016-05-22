@@ -112,29 +112,23 @@ class Translator(ast.NodeVisitor):
     #Arguments:
     #   func: The function from the binding environment.
     def serializeFunctionDeclaration(self, func):
-        templateString = 'template <'
-        templateCount = 0
-
-        functionString = func.name + '('
-        argumentCount = 0
+        templates = []
+        arguments = []
         for arg in func.arguments:
-            if argumentCount > 0:
-                functionString += ', '
-            if len(arg.types) == 1 and self.typeResolver.isTemplate(arg.types[0]):
-                if templateCount > 0:
-                   templateString += ', ' 
-                templateString += 'typename ' + arg.types[0]
-                functionString += arg.types[0] + ' const & ' + arg.name
-                templateCount += 1
-            else:
-                functionString += arg.types[0] + ' ' + arg.name
-            argumentCount += 1
-        templateString += '>'
-        functionString += ') {'
+            templates.append(arg.types[0])
+            arguments.append(arg.name)
+        
+        l1 = sum([[key, ' const & '] for key in templates], [])
+        l2 = sum([[arg, ', '] for arg in arguments], [])[:-1]
+        l2.append(')')
+        l1 = [i+j for i,j in zip(l1[::2], l1[1::2])]
+        l2 = [i+j for i,j in zip(l2[::2], l2[1::2])]
 
-        if templateCount > 0:
-            self.c_file.write(templateString + '\n')
-        self.c_file.write(func.returnType + ' ' + functionString + '\n')
+        templateString = 'template<typename ' + ''.join(sum([[key, ', typename '] for key in templates], [])[:-1]) + '>'
+        functionString = func.returnType + ' ' + func.name + '(' + ''.join([val for pair in zip(l1, l2) for val in pair]) + ' {'
+        
+        self.c_file.write(templateString + '\n')
+        self.c_file.write(functionString + '\n')
 
     #Serializes print function call into c++ code.
     #Arguments:
