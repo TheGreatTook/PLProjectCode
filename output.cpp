@@ -23,6 +23,34 @@ inline T const & add(T const & x, U const & y) {
   return x + y;
 }
 
+template<typename T>
+void helloWorld(T const & string) {
+  T introduction;
+  introduction = string("Hello World! My name is ");
+  T name;
+  name = string;
+  T greeting;
+  greeting = introduction + name;
+  cout << greeting << endl;
+}
+
+template<typename T, typename U, typename V>
+void average(T const & n1, U const & n2, V const & n3) {
+  T summ;
+  T ave;
+  if(n1 > 0  and n2 > 0  and n3 > 0 )
+  {
+    summ = n1 + n2 + n3;
+    ave = summ / 3;
+    cout << string("The average is ") << endl;
+    cout << ave << endl;
+  } 
+  else
+  { 
+  cout << string("The average is 0") << endl;
+  } 
+}
+
 int main() {
   Variant b;
   b = 3;
@@ -68,5 +96,7 @@ int main() {
   cout << (int&)a << endl;
   doStuff((int&)a);
   doStuff((double&)b);
+  helloWorld(string("Elinor"));
+  average(4,6,8);
   return 0;
 }

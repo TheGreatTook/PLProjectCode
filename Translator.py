@@ -322,7 +322,12 @@ class Translator(ast.NodeVisitor):
         self.c_file.write('  } \n')
         if len(node.orelse) != 0:
             self.c_file.write("  else")
-            self.visit((node.orelse[0]))
+            if isinstance(node.orelse[0], ast.If):
+                self.visit((node.orelse[0]))
+            else:
+                self.c_file.write('\n  { \n')
+                self.visit(node.orelse[0])
+                self.c_file.write('  } \n')
 
     def visit_While(self, node):
         variables = []
