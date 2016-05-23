@@ -238,7 +238,7 @@ class Translator(ast.NodeVisitor):
         return 'or'
 
     def visit_NameConstant(self, node): 
-        return str(node.value)
+        return str(node.value).lower()
 
     #compare stuff
     def visit_Compare(self, node):
@@ -301,32 +301,57 @@ class Translator(ast.NodeVisitor):
         for element in node.body:
             if isinstance(element, ast.Assign):
                 variables = scopingHelper(self.typeResolver).visit_Assign(element)
-                self.typeResolver.bindTypes(variables, 'forwardDeclaration')
+                self.typeResolver.bindType(variables, 'void')
                 self.serializeAssignment(variables, None)        
         self.c_file.write('  if(')
-        self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n  ')  
+        self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n')    
         for i in range(0, len(node.body)):
-            self.c_file.write('  ' + self.visit(node.body[i]) + ';\n')
+            self.c_file.write('  ')
+            if isinstance(node.body[i], ast.Assign):
+                name=''
+                num=''
+                for field in ast.iter_child_nodes(node.body[i]):
+                    if isinstance(field, ast.Name):
+                        name=self.visit(field)
+                    else:
+                        num=self.visit(field)
+
+                self.c_file.write('  ' + name + ' = ' + num + ';\n')
+            else: 
+                self.visit(node.body[i]) 
         self.c_file.write('  } \n')
         if len(node.orelse) != 0:
-            self.c_file.write("  else \n  { \n  " + self.visit((node.orelse[0])) + ';\n  } \n')
+            self.c_file.write("  else")
+            self.visit((node.orelse[0]))
 
     def visit_While(self, node):
         variables = []
         for element in node.body:
             if isinstance(element, ast.Assign):
                 variables = scopingHelper(self.typeResolver).visit_Assign(element)
-                self.typeResolver.bindTypes(variables, 'forwardDeclaration')
+                self.typeResolver.bindType(variables, 'void')
                 self.serializeAssignment(variables, None)
         self.c_file.write('  while (')
-        self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n  ')  
+        self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n')  
         for i in range(0, len(node.body)):
-            self.visit(node.body[i])
+            if isinstance(node.body[i], ast.Assign):
+                name=''
+                num=''
+                for field in ast.iter_child_nodes(node.body[i]):
+                    if isinstance(field, ast.Name):
+                        name=self.visit(field)
+                    else:
+                        num=self.visit(field)
+                    self.c_file.write('  ' + name + ' = ' + num + ';\n')
+            else:
+                self.visit(node.body[i])
         self.c_file.write('  } \n')             
 
     def visit_Call(self, node):
         if self.visit(node.func) == 'print':
             return self.serializePrint(node.args)
+        elif self.visit(node.func) == 'range':
+            print(self.visit(node.args))
         else:
             name = self.visit(node.func)
             argTypes = []
@@ -335,6 +360,33 @@ class Translator(ast.NodeVisitor):
             self.typeResolver.resolveReturnType(name, argTypes)
 
             return self.serializeCall(name, node.args)
+
+    def visit_For(self, node):
+        variables = []
+        for element in node.body:
+            if isinstance(element, ast.Assign):
+                variables = scopingHelper(self.typeResolver).visit_Assign(element)
+                self.typeResolver.bindType(variables, 'void')
+                self.serializeAssignment(variables, None)
+
+        self.c_file.write('  for(int ' + self.visit(node.target))
+        if isinstance(node.iter, ast.Call):
+            self.c_file.write('=' + self.visit(node.iter.args[0]) +'; ' + self.visit(node.target) + '<' + self.visit(node.iter.args[1]) + '; ' + self.visit(node.target) + '++) \n  {\n')
+
+        for i in range(0, len(node.body)):
+            if isinstance(node.body[i], ast.Assign):
+                name=''
+                num=''
+                for field in ast.iter_child_nodes(node.body[i]):
+                    if isinstance(field, ast.Name):
+                        name=self.visit(field)
+                    else:
+                        num=self.visit(field)
+                self.c_file.write('    ' + name + ' = ' + num + ';\n')
+            else:
+                self.c_file.write('  ')
+                self.visit(node.body[i])
+        self.c_file.write('  } \n')  
 
     #-------------------------
     #-----Statement Nodes-----
@@ -349,6 +401,9 @@ class Translator(ast.NodeVisitor):
 
         primitiveType = self.typeResolver.resolveExpressionType(node.value)
         self.typeResolver.bindType(variables, primitiveType)
+
+    def visit_AugAssign(self, node):
+        self.c_file.write('  ' + self.visit(node.target) + ' ' + self.visit(node.op) + '= ' + self.visit(node.value) + ';\n')
     
     #--------------------------
     #---Function/Class Nodes---
@@ -364,6 +419,15 @@ class Translator(ast.NodeVisitor):
             self.c_file.write('}\n\n')
 
             self.typeResolver.popFunction()
+
+
+testExpr = """
+if a == 10:
+    a /= 2
+elif a == 'hi':
+    print (a)
+"""
+print(ast.dump(ast.parse(testExpr)))
 
 argc = len(sys.argv) - 1
 argv = []

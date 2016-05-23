@@ -37,6 +37,35 @@ int main() {
   d = add((int&)a,(double&)b);
   cout << (double&)d << endl;
   addThenPrint((double&)c,(double&)d);
+  bool i;
+  i = true;
+  bool l;
+  int j;
+  if(i)
+  {
+    l = true;
+    j = 5;
+    b += 1;
+  } 
+  int k;
+  for(int x=0; x<5; x++) 
+  {
+    k = 0;
+    k += 2;
+  } 
+  while (a < 10 )
+  {
+  a += 1;
+  } 
+  if(a = 10 )
+  {
+    a = 5;
+  } 
+  else  if(a = "hi" )
+  {
+    a = "hello";
+  } 
+  cout << (int&)a << endl;
   doStuff((int&)a);
   doStuff((double&)b);
   return 0;

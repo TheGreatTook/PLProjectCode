@@ -20,5 +20,24 @@ a=2
 d=add(a,b)
 print(d)
 addThenPrint(c,d)
+
+i=True
+if i:
+	l=True
+	j=5
+	b+=1
+
+for x in range (0, 5):
+	k=0
+	k+=2
+while (a < 10):
+	a += 1
+
+if a == 10:
+	a=5
+elif a == 'hi':
+	a = 'hello'
+print(a)
 doStuff(a)
 doStuff(b)
+
