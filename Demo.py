@@ -20,6 +20,7 @@ def studentLoans(loan, interest, months):
 	payment = principal*(numerator/denominator)
 	print("You will pay:", payment, "dollars per month")
 
+#Determines if n in the given range is prime
 def prime():
         for n in range(2, 13):
                 for x in range(2, n):
