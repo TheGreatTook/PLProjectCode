@@ -355,7 +355,7 @@ class Translator(ast.NodeVisitor):
     #--------------------------
     def visit_FunctionDef(self, node):
         if not(node.name in self.translatedFunctions):
-            self.typeResolver.setEnvironment(node.name)
+            self.typeResolver.pushFunction(node.name)
 
             self.translatedFunctions.append(node.name)
             self.serializeFunctionDeclaration(self.typeResolver.retrieveFunction(node.name))
@@ -363,7 +363,7 @@ class Translator(ast.NodeVisitor):
                 self.visit(expr)
             self.c_file.write('}\n\n')
 
-            self.typeResolver.setEnvironment('main')
+            self.typeResolver.popFunction()
 
 argc = len(sys.argv) - 1
 argv = []
