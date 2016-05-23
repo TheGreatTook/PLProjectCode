@@ -51,6 +51,24 @@ void average(T const & n1, U const & n2, V const & n3) {
   } 
 }
 
+template<typename >
+void prime( {
+  for(int n=2; n<13; n++) 
+  {
+    for(int x=2; x<n; x++) 
+  {
+    if(pMod(n,x) = 0 )
+  {
+    cout << n << string("equals") << x << string("*") << n / x << endl;
+    } 
+  else
+  { 
+  cout << n << string("is a prime number") << endl;
+  } 
+  } 
+  } 
+}
+
 int main() {
   Variant b;
   b = 3;
