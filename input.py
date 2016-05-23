@@ -5,14 +5,14 @@ def doStuff(z):
 
 def addThenPrint(x,y):
     val = add(x,y)
-    #val = x + y
-    print(x + y)
+    print(val)
 
 def add(x,y):
     return x + y
 
 b=3
 a=2.5
+c = b + a
 c=add(a,b)
 print(c)
 b=4.5

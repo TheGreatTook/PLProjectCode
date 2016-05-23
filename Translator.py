@@ -34,6 +34,7 @@ class Translator(ast.NodeVisitor):
         self.typeResolver.initialize(tree)
         self.typeResolver.dump()
 
+        self.c_file.write('#include "pylib.h"\n')
         self.c_file.write('#include <iostream>\n')
         self.c_file.write('#include <math.h>\n')
         self.c_file.write('#include <string>\n')
@@ -52,7 +53,18 @@ class Translator(ast.NodeVisitor):
     def translateFunctions(self, tree):
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
+                self.forwardDeclaration(node)
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
                 self.visit(node)
+
+    #Declares a function near the top of the c++ code.
+    #Arguments:
+    #   node: A FunctionDef AST node.
+    def forwardDeclaration(self, node):
+        self.serializeFunctionDeclaration(self.typeResolver.retrieveFunction(node.name), ';')
+        self.c_file.write('\n')
 
     #Insertes type casts for variables of type Variant. This is necessary 
     #because C++ requires the type of a variable to be know at compile time
@@ -111,7 +123,8 @@ class Translator(ast.NodeVisitor):
     #Serialzes a function declaration expressions into c++ code.
     #Arguments:
     #   func: The function from the binding environment.
-    def serializeFunctionDeclaration(self, func):
+    #   postfix: The function string postfix.
+    def serializeFunctionDeclaration(self, func, postfix):
         templates = []
         arguments = []
         for arg in func.arguments:
@@ -128,7 +141,7 @@ class Translator(ast.NodeVisitor):
         if self.typeResolver.isTemplate(func.returnType):
             returnString = 'inline ' + func.returnType + ' const &'
         templateString = 'template<typename ' + ''.join(sum([[key, ', typename '] for key in templates], [])[:-1]) + '>'
-        functionString = returnString + ' ' + func.name + '(' + ''.join([val for pair in zip(l1, l2) for val in pair]) + ' {'
+        functionString = returnString + ' ' + func.name + '(' + ''.join([val for pair in zip(l1, l2) for val in pair]) + postfix
         
         self.c_file.write(templateString + '\n')
         self.c_file.write(functionString + '\n')
@@ -358,7 +371,7 @@ class Translator(ast.NodeVisitor):
             self.typeResolver.pushFunction(node.name)
 
             self.translatedFunctions.append(node.name)
-            self.serializeFunctionDeclaration(self.typeResolver.retrieveFunction(node.name))
+            self.serializeFunctionDeclaration(self.typeResolver.retrieveFunction(node.name), ' {')
             for expr in node.body:
                 self.visit(expr)
             self.c_file.write('}\n\n')

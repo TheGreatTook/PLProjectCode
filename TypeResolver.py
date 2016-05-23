@@ -54,21 +54,16 @@ class TypeResolver(ast.NodeVisitor):
     #   key: The key to the dictionary.
     def resolveDependencies(self, key):
         depends = self.dependencies[key]
-        if len(depends) == 0:
-            if key in self.dependencies.keys():
-                func = self.retrieveFunction(key)
-                self.constructBindingEnvironment(func)
-                del self.dependencies[key]
-        else:
+        if len(depends) > 0:
             for depend in depends:
                 if depend in self.dependencies.keys():
                     self.resolveDependencies(depend)
-            
-            if key in self.dependencies.keys():
-                func = self.retrieveFunction(key)
-                self.constructBindingEnvironment(func)
-                del self.dependencies[key]
 
+        if key in self.dependencies.keys():
+            func = self.retrieveFunction(key)
+            self.constructBindingEnvironment(func)
+            del self.dependencies[key]
+        
         if len(self.dependencies.keys()) > 0:
             for k in self.dependencies.keys():
                 key = k
@@ -196,7 +191,10 @@ class TypeResolver(ast.NodeVisitor):
 
         for expr in func.body:
             if isinstance(expr, ast.Return):
-                func.boundType = self.visit(expr)
+                if self.isTemplate(func.returnType):
+                    func.boundType = argTypes[0]
+                else:
+                    func.boundType = self.visit(expr)
             self.visit(expr)
 
         self.popFunction()
@@ -226,8 +224,8 @@ class TypeResolver(ast.NodeVisitor):
     #   expr: The python expression.
     #Returns:
     #   The python expression type.
-    def resolveExpressionType(self, node):
-        primitiveType = self.visit(node)
+    def resolveExpressionType(self, expr):
+        primitiveType = self.visit(expr)
         if self.environment.contains(primitiveType):
             primitiveType = self.boundType(primitiveType)
         return primitiveType

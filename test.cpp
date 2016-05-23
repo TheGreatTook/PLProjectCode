@@ -28,6 +28,7 @@ private:
     UNKOWN = 0,
     INT,
     DOUBLE,
+    BOOL,
     STRING
   };
 
@@ -36,6 +37,7 @@ private:
     union {
       int intVal;
       double realVal;
+      bool boolVal;
       string* strVal;
     };
   } data;
@@ -52,6 +54,10 @@ public:
   Variant(double v) {
     data.type = DOUBLE;
     data.realVal = v;
+  }
+  Variant(bool v) {
+    data.type = BOOL;
+    data.boolVal = v;
   }
   Variant(string v) {
     data.type = STRING;
@@ -109,6 +115,16 @@ public:
 
     return *this;
   }
+  Variant& operator = (bool newVal) {
+    if(data.type == STRING) {
+      delete data.strVal;
+    }
+
+    data.type = BOOL;
+    data.boolVal = newVal;
+
+    return *this;
+  }
   Variant& operator = (string& newVal) {
     if(data.type == STRING) {
       delete data.strVal;
@@ -131,6 +147,14 @@ public:
   operator double&() {
     if(data.type == DOUBLE) {
       return data.realVal;
+    }
+
+    throw runtime_error("bad cast");
+  }
+
+  operator bool&() {
+    if(data.type == BOOL) {
+      return data.boolVal;
     }
 
     throw runtime_error("bad cast");
@@ -183,6 +207,12 @@ int main() {
   cout << add(4.5, 4) << endl;
 
   cout << pMod(5.5, 4) << endl;
+
+  Variant v3;
+  v3 = true;
+  cout << "?" << endl;
+  if((bool&)v3)
+    cout << "COOL!" << endl;
 
   return 0;
 }
