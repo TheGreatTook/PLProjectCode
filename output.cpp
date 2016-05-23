@@ -3,10 +3,18 @@
 #include <string>
 using namespace std;
 
+template<typename T>
+void doStuff(T const & z) {
+  Variant var;
+  var = 2;
+  var = z;
+  cout << (T&)var << endl;
+}
+
 template<typename T, typename U>
 void addThenPrint(T const & x, U const & y) {
   T val;
-  val = x + y;
+  val = add(x,y);
   cout << x + y << endl;
 }
 
@@ -35,7 +43,30 @@ int main() {
   int j;
   if(i)
   {
-  l = true;
-  j = 5;
-  b += 1;
+    l = true;
+    j = 5;
+    b += 1;
   } 
+  int k;
+  for(int x=0; x<5; x++) 
+  {
+    k = 0;
+    k += 2;
+  } 
+  while (a < 10 )
+  {
+  a += 1;
+  } 
+  if(a = 10 )
+  {
+    a = 5;
+  } 
+  else  if(a = "hi" )
+  {
+    a = "hello";
+  } 
+  cout << (int&)a << endl;
+  doStuff((int&)a);
+  doStuff((double&)b);
+  return 0;
+}

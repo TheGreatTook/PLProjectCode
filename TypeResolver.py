@@ -10,8 +10,9 @@ class TypeResolver(ast.NodeVisitor):
     def __init__(self):
         self.rootEnvironment = TypeBindingEnvironment()
         self.environment = self.rootEnvironment
+        self.dependencies = {}
 
-        self.function = 'main'
+        self.callStack = ['main']
         self.c_types = ['int', 'double', 'string', 'bool', 'void', 'Variant']
         self.BuiltIns = ['print', 'range']
     
@@ -22,39 +23,63 @@ class TypeResolver(ast.NodeVisitor):
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
                 self.visit(node)
+                self.dependencies[node.name] = self.scrapeDependencies(node.body)
+
+        if len(self.dependencies.keys()) > 0:
+            for k in self.dependencies.keys():
+                key = k
+                break
+            self.resolveDependencies(key)
+
         self.visit(tree)
         self.environment.clearBindings()
 
-    #Creates a template generator closure.
+    #Scrapes dependencies from a functions body.
     #Arguments:
-    #   templates: A list of template keys.
+    #   body: The function body.
     #Returns:
-    #   A unqiue template key.
-    def makeTemplateGenerator(self, templates):
-        count = [0]
-        def generateTemplate():
-            key = ''
-            repeat = (count[0] // len(templates)) + 1
-            for i in range(0, repeat):
-                key += templates[count[0] % len(templates)]
-            count[0] += 1
-            return key
-        return generateTemplate
+    #   A list containing the dependencies.
+    def scrapeDependencies(self, body):
+        dependencies = []
+        for expr in body:
+            for node in ast.iter_child_nodes(expr):
+                if isinstance(node, ast.Call):
+                    dependency = node.func.id
+                    if not(dependency in self.BuiltIns):
+                        dependencies.append(dependency)
+        return dependencies
 
-    #Generates the function argument template keys.
+    #Resolves function dependencies.
     #Arguments:
-    #   func: The function.
-    def generateTemplateKeys(self, func):
-        generate = self.makeTemplateGenerator(['T', 'U', 'V', 'W'])
-        for arg in func.arguments:
-            arg.types = [generate()]
-            arg.boundType = arg.types[0]
+    #   key: The key to the dictionary.
+    def resolveDependencies(self, key):
+        depends = self.dependencies[key]
+        if len(depends) == 0:
+            if key in self.dependencies.keys():
+                func = self.retrieveFunction(key)
+                self.constructBindingEnvironment(func)
+                del self.dependencies[key]
+        else:
+            for depend in depends:
+                if depend in self.dependencies.keys():
+                    self.resolveDependencies(depend)
+            
+            if key in self.dependencies.keys():
+                func = self.retrieveFunction(key)
+                self.constructBindingEnvironment(func)
+                del self.dependencies[key]
+
+        if len(self.dependencies.keys()) > 0:
+            for k in self.dependencies.keys():
+                key = k
+                break
+            self.resolveDependencies(key)
 
     #Constructs the binding environment of a function.
     #Arguments:
     #   func: The function.
     def constructBindingEnvironment(self, func):
-        self.setEnvironment(func.name)
+        self.pushFunction(func.name)
 
         for arg in func.arguments:
             self.environment.add(arg)
@@ -65,13 +90,23 @@ class TypeResolver(ast.NodeVisitor):
             else:
                 self.visit(expr)
 
-        self.setEnvironment('main')
+        self.popFunction()
 
-    #Sets the current binding environment.
+    #Pushes a function on to the call stack.
     #Arguments:
-    #   func: The function whose binding environment we should use.
-    def setEnvironment(self, func):
-        self.function = func
+    #   func: The function to push.
+    def pushFunction(self, func):
+        self.callStack.append(func)
+        self.updateEnvironment()
+
+    #Pops a function off the top of the call stack.
+    def popFunction(self):
+        self.callStack.pop()
+        self.updateEnvironment()
+
+    #Updates the current binding environment.
+    def updateEnvironment(self):
+        func = self.callStack[-1]
         if self.rootEnvironment.contains(func):
             self.environment = self.rootEnvironment.find(func).environment
         else:
@@ -79,13 +114,23 @@ class TypeResolver(ast.NodeVisitor):
 
     #Gets the variable names associated with the current binding environment.
     #Returns:
-    #   The variables associated with the current binding environment.
+    #   The variable names associated with the current binding environment.
     def getVariables(self):
         variables = []
         for elt in self.environment.elements:
             if isinstance(elt, Variable):
                 variables.append(elt.name)
         return variables
+
+    #Gets the function names associated with the root binding environment.
+    #Returns:
+    #   The function names associated with the current binding environment.
+    def getFunctions(self):
+        functions = []
+        for elt in self.rootEnvironment.elements:
+            if isinstance(elt, Function):
+                functions.append(elt.name)
+        return functions
 
     #Retrieves a function from the root binding environment.
     #Arguments:
@@ -143,7 +188,7 @@ class TypeResolver(ast.NodeVisitor):
     #   name: The name of the function.
     #   argTypess: The argument types.
     def resolveReturnType(self, name, argTypes):
-        self.setEnvironment(name)
+        self.pushFunction(name)
 
         func = self.retrieveFunction(name)
         for i in range(0, len(argTypes)):
@@ -154,7 +199,7 @@ class TypeResolver(ast.NodeVisitor):
                 func.boundType = self.visit(expr)
             self.visit(expr)
 
-        self.setEnvironment('main')
+        self.popFunction()
 
     #Resolves the type of a given variable. Note variables with 
     #multiple binding will be considered variants while variables
@@ -167,7 +212,7 @@ class TypeResolver(ast.NodeVisitor):
         var = self.environment.find(name)
         if isinstance(var, Function):
             return var.returnType
-        elif self.isTemplate(var.types[0]) and not(self.function == 'main'):
+        elif self.isTemplate(var.types[0]) and not(self.callStack[-1] == 'main'):
             return var.types[0]
         elif len(var.types) > 1 or self.isTemplate(var.types[0]):
             return 'Variant'
@@ -204,7 +249,7 @@ class TypeResolver(ast.NodeVisitor):
     #-----Variable Node-----
     #-----------------------
     def visit_Name(self, node):
-        if not(self.environment.contains(node.id)) and not(node.id in self.BuiltIns):
+        if not(self.environment.contains(node.id)) and not(node.id in self.BuiltIns) and not(node.id in self.getFunctions()):
             self.environment.add(Variable(node.id))
         return node.id
 
@@ -247,8 +292,8 @@ class TypeResolver(ast.NodeVisitor):
 
     def visit_Call(self, node):
         name = self.visit(node.func)
-        if self.environment.contains(name):
-            func = self.environment.find(name)
+        if name in self.getFunctions():
+            func = self.retrieveFunction(name)
             if func.boundType == 'void':
                 return func.returnType
             return func.boundType
@@ -260,6 +305,18 @@ class TypeResolver(ast.NodeVisitor):
         else:
             self.environment.add(Variable(node.id))
             self.environment.find(target).addType('int')
+        for body in node.body:
+            if isinstance(body, ast.Assign):
+                name=''
+                for field in ast.iter_child_nodes(body):
+                    if isinstance(field, ast.Name):
+                        name=self.visit(field)
+                if self.environment.contains(name):
+                    self.environment.find(name).addType('int')
+                else:
+                  self.environment.add(Variable(node.id))
+                  self.environment.find(name).addType('int')
+
 
 
     #-------------------------
@@ -286,9 +343,8 @@ class TypeResolver(ast.NodeVisitor):
                 func.addArgument(arg)
             func.body = node.body
 
+            func.generateTemplateKeys()
             self.environment.add(func)
-            self.generateTemplateKeys(func)
-            self.constructBindingEnvironment(func)
 
     def visit_arguments(self, node):
         args = []

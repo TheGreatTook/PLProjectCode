@@ -306,22 +306,23 @@ class Translator(ast.NodeVisitor):
         self.c_file.write('  if(')
         self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n')    
         for i in range(0, len(node.body)):
+            self.c_file.write('  ')
             if isinstance(node.body[i], ast.Assign):
                 name=''
                 num=''
                 for field in ast.iter_child_nodes(node.body[i]):
                     if isinstance(field, ast.Name):
                         name=self.visit(field)
-                    elif isinstance(field, ast.Num):
+                    else:
                         num=self.visit(field)
-                    elif isinstance(field, ast.NameConstant):
-                        num=self.visit(field)
+
                 self.c_file.write('  ' + name + ' = ' + num + ';\n')
             else: 
                 self.visit(node.body[i]) 
         self.c_file.write('  } \n')
         if len(node.orelse) != 0:
-            self.c_file.write("  else \n  { \n  " + self.visit((node.orelse[0])) + ';\n  } \n')
+            self.c_file.write("  else")
+            self.visit((node.orelse[0]))
 
     def visit_While(self, node):
         variables = []
@@ -339,7 +340,7 @@ class Translator(ast.NodeVisitor):
                 for field in ast.iter_child_nodes(node.body[i]):
                     if isinstance(field, ast.Name):
                         name=self.visit(field)
-                    elif isinstance(field, ast.Num):
+                    else:
                         num=self.visit(field)
                     self.c_file.write('  ' + name + ' = ' + num + ';\n')
             else:
@@ -379,7 +380,7 @@ class Translator(ast.NodeVisitor):
                 for field in ast.iter_child_nodes(node.body[i]):
                     if isinstance(field, ast.Name):
                         name=self.visit(field)
-                    elif isinstance(field, ast.Num):
+                    else:
                         num=self.visit(field)
                 self.c_file.write('    ' + name + ' = ' + num + ';\n')
             else:
@@ -409,7 +410,7 @@ class Translator(ast.NodeVisitor):
     #--------------------------
     def visit_FunctionDef(self, node):
         if not(node.name in self.translatedFunctions):
-            self.typeResolver.setEnvironment(node.name)
+            self.typeResolver.pushFunction(node.name)
 
             self.translatedFunctions.append(node.name)
             self.serializeFunctionDeclaration(self.typeResolver.retrieveFunction(node.name))
@@ -417,18 +418,16 @@ class Translator(ast.NodeVisitor):
                 self.visit(expr)
             self.c_file.write('}\n\n')
 
-            self.typeResolver.setEnvironment('main')
+            self.typeResolver.popFunction()
+
 
 testExpr = """
-
-for x in range (0, 5):
-    k=0
-    k+=2
-
+if a == 10:
+    a /= 2
+elif a == 'hi':
+    print (a)
 """
-
 print(ast.dump(ast.parse(testExpr)))
-
 
 argc = len(sys.argv) - 1
 argv = []

@@ -1,5 +1,11 @@
+def doStuff(z):
+    var = 2
+    var = z
+    print(var)
+
 def addThenPrint(x,y):
-    val = x + y
+    val = add(x,y)
+    #val = x + y
     print(x + y)
 
 def add(x,y):
@@ -24,3 +30,14 @@ if i:
 for x in range (0, 5):
 	k=0
 	k+=2
+while (a < 10):
+	a += 1
+
+if a == 10:
+	a=5
+elif a == 'hi':
+	a = 'hello'
+print(a)
+doStuff(a)
+doStuff(b)
+
