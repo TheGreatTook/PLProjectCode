@@ -14,6 +14,15 @@ template<typename T, typename U>
 inline T const & add(T const & x, U const & y);
 
 template<typename T>
+void helloWorld(T const & s);
+
+template<typename T, typename U, typename V>
+void average(T const & n1, U const & n2, V const & n3);
+
+template<typename T>
+void prime(T const & num);
+
+template<typename T>
 void doStuff(T const & z) {
   Variant var;
   var = 2;
@@ -34,11 +43,11 @@ inline T const & add(T const & x, U const & y) {
 }
 
 template<typename T>
-void helloWorld(T const & string) {
-  T introduction;
+void helloWorld(T const & s) {
+  string introduction;
   introduction = string("Hello World! My name is ");
   T name;
-  name = string;
+  name = s;
   T greeting;
   greeting = introduction + name;
   cout << greeting << endl;
@@ -48,7 +57,7 @@ template<typename T, typename U, typename V>
 void average(T const & n1, U const & n2, V const & n3) {
   T summ;
   T ave;
-  if(n1 > 0  and n2 > 0  and n3 > 0 )
+  if(n1 > 0 and n2 > 0 and n3 > 0)
   {
     summ = n1 + n2 + n3;
     ave = summ / 3;
@@ -61,16 +70,17 @@ void average(T const & n1, U const & n2, V const & n3) {
   } 
 }
 
-template<typename >
-void prime( {
-  for(int n=2; n<13; n++) 
+template<typename T>
+void prime(T const & num) {
+  for(int n=2; n<num; n++) 
   {
     for(int x=2; x<n; x++) 
   {
-    if(pMod(n,x) = 0 )
+    if(pMod(n,x) == 0)
   {
     cout << n << string("equals") << x << string("*") << n / x << endl;
-    } 
+    break;
+  } 
   else
   { 
   cout << n << string("is a prime number") << endl;
@@ -92,12 +102,8 @@ int main() {
   a = 2;
   Variant d;
   d = add((int&)a,(double&)b);
-<<<<<<< HEAD
   cout << (int&)d << endl;
   addThenPrint((double&)c,(int&)d);
-=======
-  cout << (double&)d << endl;
-  addThenPrint((double&)c,(double&)d);
   bool i;
   i = true;
   bool l;
@@ -106,31 +112,25 @@ int main() {
   {
     l = true;
     j = 5;
-    b += 1;
+    b = (double&)b+1;
   } 
   int k;
   for(int x=0; x<5; x++) 
   {
     k = 0;
-    k += 2;
+    k = k+2;
   } 
-  while (a < 10 )
+  while ((int&)a < 10)
   {
-  a += 1;
-  } 
-  if(a = 10 )
-  {
-    a = 5;
-  } 
-  else  if(a = "hi" )
-  {
-    a = "hello";
+  a = (int&)a+1;
   } 
   cout << (int&)a << endl;
->>>>>>> f3d2656cab85193065e67c0a6700c97c856ba9a3
   doStuff((int&)a);
   doStuff((double&)b);
-  helloWorld(string("Elinor"));
+  string name;
+  name = string("Elinor");
+  helloWorld(name);
   average(4,6,8);
+  prime(13);
   return 0;
 }

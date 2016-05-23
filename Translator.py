@@ -261,7 +261,7 @@ class Translator(ast.NodeVisitor):
          return compareString
 
     def visit_Eq(self, node):
-        return '='
+        return '=='
 
     def visit_NotEq(self, node):
         return '!='        
@@ -304,10 +304,10 @@ class Translator(ast.NodeVisitor):
         self.c_file.write('  return ' + value + ';\n')
 
     def visit_Break(self, node):
-        return "break"
+        self.c_file.write("  break;\n")
 
     def visit_Continue(self, node):
-        return "continue"
+        self.c_file.write("  continue;\n")
 
     def visit_If(self, node):
         variables = []
@@ -317,7 +317,7 @@ class Translator(ast.NodeVisitor):
                 self.typeResolver.bindType(variables, 'void')
                 self.serializeAssignment(variables, None)        
         self.c_file.write('  if(')
-        self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n')    
+        self.c_file.write(self.decorate(node.test) +')\n' + '  {' + '\n')    
         for i in range(0, len(node.body)):
             self.c_file.write('  ')
             if isinstance(node.body[i], ast.Assign):
@@ -350,7 +350,7 @@ class Translator(ast.NodeVisitor):
                 self.typeResolver.bindType(variables, 'void')
                 self.serializeAssignment(variables, None)
         self.c_file.write('  while (')
-        self.c_file.write(self.visit(node.test) +')\n' + '  {' + '\n')  
+        self.c_file.write(self.decorate(node.test) +')\n' + '  {' + '\n')  
         for i in range(0, len(node.body)):
             if isinstance(node.body[i], ast.Assign):
                 name=''
@@ -421,7 +421,7 @@ class Translator(ast.NodeVisitor):
         self.typeResolver.bindType(variables, primitiveType)
 
     def visit_AugAssign(self, node):
-        self.c_file.write('  ' + self.visit(node.target) + ' ' + self.visit(node.op) + '= ' + self.visit(node.value) + ';\n')
+        self.c_file.write('  ' + self.visit(node.target) + ' = ' + self.decorate(node.target) + self.visit(node.op) + self.decorate(node.value) + ';\n')
     
     #--------------------------
     #---Function/Class Nodes---

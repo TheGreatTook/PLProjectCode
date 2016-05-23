@@ -10,9 +10,9 @@ def addThenPrint(x,y):
 def add(x,y):
     return x + y
 
-def helloWorld(string):
+def helloWorld(s):
     introduction = "Hello World! My name is "
-    name = string
+    name = s
     greeting = introduction + name
     print(greeting)             
 
@@ -25,8 +25,8 @@ def average(n1, n2, n3):
     else:
         print("The average is 0")
 
-def prime():
-    for n in range(2, 13):
+def prime(num):
+    for n in range(2, num):
         for x in range(2, n):
             if n % x == 0:
                 print(n, "equals", x, "*", n/x)
@@ -57,14 +57,12 @@ for x in range (0, 5):
 while (a < 10):
 	a += 1
 
-if a == 10:
-	a=5
-elif a == 'hi':
-	a = 'hello'
 print(a)
 doStuff(a)
 doStuff(b)
 
-helloWorld("Elinor")
+name = "Elinor"
+helloWorld(name)
 
 average(4, 6, 8)
+prime(13)
