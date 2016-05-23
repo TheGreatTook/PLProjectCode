@@ -296,6 +296,25 @@ class TypeResolver(ast.NodeVisitor):
                 return func.returnType
             return func.boundType
 
+    def visit_For(self, node):
+        target = self.visit(node.target)
+        if self.environment.contains(target):
+            self.environment.find(target).addType('int')
+        else:
+            self.environment.add(Variable(node.id))
+            self.environment.find(target).addType('int')
+        for body in node.body:
+            if isinstance(body, ast.Assign):
+                name=''
+                for field in ast.iter_child_nodes(body):
+                    if isinstance(field, ast.Name):
+                        name=self.visit(field)
+                if self.environment.contains(name):
+                    self.environment.find(name).addType('int')
+                else:
+                  self.environment.add(Variable(node.id))
+                  self.environment.find(name).addType('int')
+
     #-------------------------
     #-----Statement Nodes-----
     #-------------------------
