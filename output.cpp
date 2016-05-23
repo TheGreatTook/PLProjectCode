@@ -29,5 +29,13 @@ int main() {
   d = add((int&)a,(double&)b);
   cout << (double&)d << endl;
   addThenPrint((double&)c,(double&)d);
-  return 0;
-}
+  bool i;
+  i = true;
+  bool l;
+  int j;
+  if(i)
+  {
+  l = true;
+  j = 5;
+  b += 1;
+  } 

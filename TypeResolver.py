@@ -13,7 +13,7 @@ class TypeResolver(ast.NodeVisitor):
 
         self.function = 'main'
         self.c_types = ['int', 'double', 'string', 'bool', 'void', 'Variant']
-        self.BuiltIns = ['print']
+        self.BuiltIns = ['print', 'range']
     
     #Initializes the root binding environment for a python source program.
     #Arguments:
@@ -252,6 +252,15 @@ class TypeResolver(ast.NodeVisitor):
             if func.boundType == 'void':
                 return func.returnType
             return func.boundType
+
+    def visit_For(self, node):
+        target = self.visit(node.target)
+        if self.environment.contains(target):
+            self.environment.find(target).addType('int')
+        else:
+            self.environment.add(Variable(node.id))
+            self.environment.find(target).addType('int')
+
 
     #-------------------------
     #-----Statement Nodes-----
